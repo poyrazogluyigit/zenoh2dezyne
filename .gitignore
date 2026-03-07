@@ -1,3 +1,5 @@
 examples/build/
+examples/**/build/
+.cache/
 .vscode
 build/
