@@ -1,0 +1,886 @@
+## Phase 0 — CPG Setup
+
+```scala
+// Load source code into Joern (include zenoh headers directory for type resolution)
+importCode("/path/to/sources", "zenoh2dezyne")
+
+// Or with compile_commands.json for accurate includes/defines:
+// c2cpg.sh --compilation-database /path/to/build/compile_commands.json /path/to/sources -o cpg.bin
+
+// Compute data flow overlay (required for reachableBy/reachableByFlows)
+run.ossdataflow
+```
+
+---
+
+## Phase 1 — Inventory & Sanity Checks
+
+```scala
+// Q1: List all source files in the CPG
+cpg.file.name.l
+
+// Q2: List all top-level methods (entry points + callbacks)
+cpg.method.nameNot("<.*>").map(m => (m.filename, m.name)).l
+
+// Q3: List all global/file-scope variables per file
+cpg.local.filter(_.method.name == "<global>").map(v => (v.name, v.typeFullName, v.file.name.head)).l
+
+// Q4: All call sites in the project (overview)
+cpg.call.nameNot("<operator>.*").map(c => (c.name, c.file.name.head, c.lineNumber)).l
+```
+
+---
+
+## Phase 2 — Zenoh API Call Extraction
+
+### 2A: Session Discovery
+```scala
+// Q5: Find all Session::open calls — one per component
+cpg.call.name("open")
+  .where(_.code(".*Session.*"))
+  .map(c => (c.file.name.head, c.code, c.lineNumber))
+  .l
+
+// Q5b: Alternative — search by methodFullName pattern
+cpg.call.methodFullName(".*Session.*open.*")
+  .map(c => (c.file.name.head, c.code, c.lineNumber))
+  .l
+```
+
+### 2B: Publisher Declarations
+```scala
+// Q6: All declare_publisher calls — extract key expression and assigned variable
+cpg.call.name("declare_publisher")
+  .map(c => Map(
+    "file"    -> c.file.name.head,
+    "line"    -> c.lineNumber.getOrElse(-1),
+    "code"    -> c.code,
+    "keyExpr" -> c.argument(1).code
+  ))
+  .l
+
+// Q7: Key expression string literals in declare_publisher arguments
+cpg.call.name("declare_publisher")
+  .argument(1)
+  .isLiteral
+  .code
+  .l
+
+// Q8: Variable names assigned from declare_publisher
+// (the LHS of the assignment containing the declare_publisher call)
+cpg.call.name("declare_publisher")
+  .inCall
+  .name("<operator>.assignment")
+  .argument(1)
+  .code
+  .l
+
+// Q8b: Alternative — trace the identifier receiving the publisher object
+cpg.call.name("declare_publisher")
+  .astParent
+  .isCall
+  .name("<operator>.assignment")
+  .argument(1)
+  .isIdentifier
+  .map(i => (i.name, i.file.name.head))
+  .l
+```
+
+### 2C: Subscriber Declarations
+```scala
+// Q9: All declare_subscriber calls — key expression + callback reference
+cpg.call.name("declare_subscriber")
+  .map(c => Map(
+    "file"     -> c.file.name.head,
+    "line"     -> c.lineNumber.getOrElse(-1),
+    "code"     -> c.code,
+    "keyExpr"  -> c.argument(1).code,
+    "callback" -> c.argument(2).code
+  ))
+  .l
+
+// Q10: Key expression literals for subscribers
+cpg.call.name("declare_subscriber")
+  .argument(1)
+  .isLiteral
+  .code
+  .l
+
+// Q11: Callback function references from declare_subscriber (2nd arg)
+cpg.call.name("declare_subscriber")
+  .argument(2)
+  .code
+  .l
+
+// Q12: Variable names assigned from declare_subscriber
+cpg.call.name("declare_subscriber")
+  .astParent
+  .isCall
+  .name("<operator>.assignment")
+  .argument(1)
+  .code
+  .l
+```
+
+### 2D: Publisher `put()` Call Sites
+```scala
+// Q13: All put() calls — receiver variable, arguments, containing function, file
+cpg.call.name("put")
+  .map(c => Map(
+    "file"       -> c.file.name.head,
+    "line"       -> c.lineNumber.getOrElse(-1),
+    "code"       -> c.code,
+    "receiver"   -> c.argument(0).code,   // the object calling .put
+    "payload"    -> c.argument(1).code,    // what is being published
+    "inMethod"   -> c.method.name
+  ))
+  .l
+
+// Q14: Put calls originating from a specific callback
+cpg.method.name("nak_callback")
+  .ast.isCall.name("put")
+  .map(c => (c.argument(0).code, c.argument(1).code, c.lineNumber))
+  .l
+
+// Q15: Put calls in main() — for driver/loop classification
+cpg.method.name("main")
+  .ast.isCall.name("put")
+  .map(c => (c.file.name.head, c.argument(0).code, c.argument(1).code, c.lineNumber))
+  .l
+```
+
+### 2E: Session-level `session.put()` (Direct Publish without Publisher Object)
+```scala
+// Q16: Direct session.put() calls (no Publisher object)
+cpg.call.name("put")
+  .where(_.argument(0).code(".*session.*"))
+  .map(c => Map(
+    "file"    -> c.file.name.head,
+    "line"    -> c.lineNumber.getOrElse(-1),
+    "code"    -> c.code,
+    "keyExpr" -> c.argument(1).code,
+    "payload" -> c.argument(2).code
+  ))
+  .l
+```
+
+### 2F: Dynamic Key Expressions (Constructed at Runtime)
+```scala
+// Q17: declare_publisher where key expr is NOT a plain string literal
+// (e.g., "phil/" + zid + "/send")
+cpg.call.name("declare_publisher")
+  .argument(1)
+  .whereNot(_.isLiteral)
+  .map(a => (a.code, a.file.name.head, a.lineNumber))
+  .l
+
+// Q18: declare_subscriber where key expr is NOT a plain string literal
+cpg.call.name("declare_subscriber")
+  .argument(1)
+  .whereNot(_.isLiteral)
+  .map(a => (a.code, a.file.name.head, a.lineNumber))
+  .l
+
+// Q19: Session.put() with dynamic key expression
+cpg.call.name("put")
+  .where(_.argument(0).code(".*session.*"))
+  .argument(1)
+  .whereNot(_.isLiteral)
+  .map(a => (a.code, a.file.name.head, a.lineNumber))
+  .l
+```
+
+### 2G: Full Per-File API Manifest (Composite Query)
+```scala
+// Q20: Complete per-file Zenoh API summary as JSON
+cpg.file.name.l.map { fname =>
+  Map(
+    "file" -> fname,
+    "sessions" -> cpg.call.name("open").where(_.file.name(fname)).code.l,
+    "publishers" -> cpg.call.name("declare_publisher").where(_.file.name(fname))
+      .map(c => Map("var" -> c.astParent.isCall.argument(1).code.headOption.getOrElse("?"),
+                     "keyExpr" -> c.argument(1).code)).l,
+    "subscribers" -> cpg.call.name("declare_subscriber").where(_.file.name(fname))
+      .map(c => Map("keyExpr" -> c.argument(1).code,
+                     "callback" -> c.argument(2).code)).l,
+    "putCalls" -> cpg.call.name("put").where(_.file.name(fname))
+      .map(c => Map("receiver" -> c.argument(0).code,
+                     "inMethod" -> c.method.name,
+                     "line" -> c.lineNumber.getOrElse(-1))).l
+  )
+}.toJsonPretty
+```
+
+---
+
+## Phase 3 — Topology Graph (Publisher ↔ Subscriber Matching)
+
+```scala
+// Q21: Build edge list: (publisher_file, key_expr, subscriber_file)
+// Step 1: Collect all publisher key expressions per file
+val pubs = cpg.call.name("declare_publisher")
+  .map(c => (c.file.name.head, c.argument(1).code.stripPrefix("\"").stripSuffix("\"")))
+  .l
+
+// Step 2: Collect all subscriber key expressions per file  
+val subs = cpg.call.name("declare_subscriber")
+  .map(c => (c.file.name.head, c.argument(1).code.stripPrefix("\"").stripSuffix("\"")))
+  .l
+
+// Step 3: Match — literal equality on key expression
+val edges = for {
+  (pubFile, pubKey) <- pubs
+  (subFile, subKey) <- subs
+  if pubKey == subKey && pubFile != subFile
+} yield Map("from" -> pubFile, "keyExpr" -> pubKey, "to" -> subFile)
+
+// Q22: Fan-out detection — count subscribers per (key, publisher)
+edges.groupBy(e => (e("keyExpr"), e("from")))
+  .mapValues(_.map(_("to")).distinct.size)
+  .filter(_._2 > 1)
+```
+
+---
+
+## Phase 4 — Callback Resolution & Mapping
+
+```scala
+// Q23: Resolve callback function names from declare_subscriber arg → method body
+cpg.call.name("declare_subscriber")
+  .argument(2)
+  .map { arg =>
+    val cbName = arg.code.stripPrefix("&")
+    Map(
+      "subscriberKey" -> arg.inCall.head.argument(1).code,
+      "callbackName"  -> cbName,
+      "file"          -> arg.file.name.head,
+      "hasMethod"     -> cpg.method.name(cbName).nonEmpty
+    )
+  }.l
+
+// Q24: For each callback, check if it is referenced by MULTIPLE subscribers
+cpg.call.name("declare_subscriber")
+  .argument(2)
+  .code
+  .l
+  .groupBy(identity)
+  .filter(_._2.size > 1)
+
+// Q25: List all methods that take a zenoh::Sample parameter (callback candidates)
+cpg.method.parameter
+  .typeFullName(".*Sample.*")
+  .method
+  .map(m => (m.name, m.filename))
+  .l
+```
+
+---
+
+## Phase 5 — State Variable Discovery
+
+### 5A: Global / File-Scope Variables
+```scala
+// Q26: All global-scope identifiers (file-level variables)
+cpg.identifier
+  .where(_.method.name("<global>"))
+  .map(i => (i.name, i.typeFullName, i.file.name.head))
+  .dedup
+  .l
+
+// Q27: All assignments to file-scope variables
+cpg.assignment
+  .where(_.file.name(".*sender.*"))
+  .map(a => (a.target.code, a.source.code, a.method.name, a.lineNumber))
+  .l
+```
+
+### 5B: Identify State Variables (Read + Written Across Callbacks)
+```scala
+// Q28: Per-file, find variables that are WRITTEN in one method and READ in another
+// Step 1: Get all writes (assignment targets) per method per file
+val writes = cpg.assignment.target.isIdentifier
+  .map(i => (i.file.name.head, i.name, i.method.name))
+  .l.distinct
+
+// Step 2: Get all reads (identifier references not on LHS of assignment) per method
+val reads = cpg.identifier
+  .whereNot(_.inCall.name("<operator>.assignment").argument(1))
+  .map(i => (i.file.name.head, i.name, i.method.name))
+  .l.distinct
+
+// Step 3: Cross-check: variable that appears in writes of method A and reads of method B
+val crossMethodVars = for {
+  (f1, v1, m1) <- writes
+  (f2, v2, m2) <- reads
+  if f1 == f2 && v1 == v2 && m1 != m2
+} yield Map("file" -> f1, "var" -> v1, "writtenIn" -> m1, "readIn" -> m2)
+
+// Q29: Per callback — all identifiers that reference file-scope state
+cpg.method.name("nak_callback")
+  .ast.isIdentifier
+  .map(i => (i.name, i.typeFullName))
+  .dedup
+  .l
+
+// Q30: All identifiers used in conditions within a callback
+cpg.method.name("nak_callback")
+  .ast.isControlStructure
+  .condition
+  .ast.isIdentifier
+  .map(i => i.name)
+  .dedup
+  .l
+```
+
+### 5C: Type Classification for State Variables
+```scala
+// Q31: Type of each file-scope variable
+cpg.identifier
+  .where(_.method.name("<global>"))
+  .map(i => (i.name, i.typeFullName))
+  .dedup
+  .l
+
+// Q32: Find integer variables compared against constants (for subint bound inference)
+cpg.call.name("<operator>.equals", "<operator>.lessThan", 
+              "<operator>.greaterThan", "<operator>.lessEqualsThan",
+              "<operator>.greaterEqualsThan")
+  .where(_.argument.isIdentifier)
+  .map(c => Map(
+    "var"      -> c.argument.isIdentifier.name.headOption.getOrElse("?"),
+    "op"       -> c.name,
+    "literal"  -> c.argument.isLiteral.code.headOption.getOrElse("?"),
+    "inMethod" -> c.method.name,
+    "file"     -> c.file.name.head
+  ))
+  .l
+
+// Q33: Find boolean variables (type == bool)
+cpg.identifier
+  .typeFullName(".*bool.*")
+  .map(i => (i.name, i.file.name.head))
+  .dedup
+  .l
+
+// Q34: Find enum type declarations
+cpg.typeDecl
+  .filter(_.code.contains("enum"))
+  .map(t => (t.name, t.fullName, t.file.name.head))
+  .l
+```
+
+---
+
+## Phase 6 — Callback Behavior Extraction (CFG Walking)
+
+### 6A: Control Flow Graph
+```scala
+// Q35: Get CFG for a callback in DOT format
+cpg.method.name("nak_callback").dotCfg.l
+
+// Q36: Get CFG for all callbacks (methods taking Sample parameter)
+cpg.method.parameter.typeFullName(".*Sample.*").method
+  .map(m => Map("name" -> m.name, "cfg" -> m.dotCfg.head))
+  .l
+```
+
+### 6B: If/Else Branching on State Variables
+```scala
+// Q37: All if-blocks inside a callback with their conditions
+cpg.method.name("nak_callback")
+  .ast.isControlStructure
+  .controlStructureType("IF")
+  .map(cs => Map(
+    "condition" -> cs.condition.code,
+    "line"      -> cs.lineNumber.getOrElse(-1)
+  ))
+  .l
+
+// Q38: Nested if/else chain — full AST subtree for a callback
+cpg.method.name("callback")
+  .ast.isControlStructure
+  .controlStructureType("IF")
+  .map(cs => Map(
+    "condition" -> cs.condition.code,
+    "line"      -> cs.lineNumber.getOrElse(-1),
+    "body"      -> cs.astChildren.isBlock.ast.isCall.nameNot("<operator>.*").code.l,
+    "hasElse"   -> cs.astChildren.isControlStructure.nonEmpty
+  ))
+  .l
+```
+
+### 6C: Assignments to State Variables Inside Callbacks
+```scala
+// Q39: All assignments in a callback (state transitions)
+cpg.method.name("nak_callback")
+  .ast.isCall.name("<operator>.assignment")
+  .map(a => Map(
+    "target" -> a.argument(1).code,
+    "value"  -> a.argument(2).code,
+    "line"   -> a.lineNumber.getOrElse(-1)
+  ))
+  .l
+
+// Q40: Assignment targets that are known state variables
+val stateVars = Set("TX_TRAIL", "TX_LEAD", "LAST_RECEIVED",
+                    "leftForkAvailable", "rightForkAvailable",
+                    "leftForkAcquired", "rightForkAcquired", "isConnected")
+
+cpg.method.name("nak_callback")
+  .ast.isCall.name("<operator>.assignment")
+  .where(_.argument(1).code(stateVars.mkString("|")))
+  .map(a => (a.argument(1).code, a.argument(2).code, a.lineNumber))
+  .l
+```
+
+### 6D: `put()` Actions Inside Callbacks
+```scala
+// Q41: All put() calls within each callback — resolve to port.event()
+cpg.method.parameter.typeFullName(".*Sample.*").method
+  .map { m =>
+    Map(
+      "callback" -> m.name,
+      "file"     -> m.filename,
+      "putCalls" -> m.ast.isCall.name("put")
+        .map(c => Map(
+          "receiver" -> c.argument(0).code,
+          "payload"  -> c.argument(1).code,
+          "line"     -> c.lineNumber.getOrElse(-1)
+        )).l
+    )
+  }.l
+
+// Q42: Map a publisher variable back to its key expression
+// (for resolving put() receiver → event name)
+cpg.call.name("declare_publisher")
+  .map { c =>
+    val varName = c.astParent.isCall.argument(1).code.headOption.getOrElse("?")
+    Map("var" -> varName, "keyExpr" -> c.argument(1).code)
+  }.l
+```
+
+---
+
+## Phase 7 — String Protocol Decomposition (Payload Branching)
+
+```scala
+// Q43: Find callbacks that branch on payload content
+// (i.e., compare sample.get_payload().as_string() against string literals)
+cpg.method.parameter.typeFullName(".*Sample.*").method
+  .ast.isCall.name("<operator>.equals")
+  .where(_.argument.code(".*get_payload.*|.*as_string.*"))
+  .map(c => Map(
+    "callback"    -> c.method.name,
+    "file"        -> c.file.name.head,
+    "comparison"  -> c.code,
+    "stringValue" -> c.argument.isLiteral.code.headOption.getOrElse("?"),
+    "line"        -> c.lineNumber.getOrElse(-1)
+  ))
+  .l
+
+// Q44: All string literals compared against payload in the "callback" method
+// (each becomes a separate Dezyne event)
+cpg.method.name("callback")
+  .ast.isCall.name("<operator>.equals")
+  .argument.isLiteral
+  .code
+  .l
+
+// Q45: Data flow from get_payload() to comparison operands
+def source = cpg.method.name("callback").ast.isCall.name("as_string")
+def sink = cpg.method.name("callback").ast.isCall.name("<operator>.equals").argument
+sink.reachableByFlows(source).p
+
+// Q46: Find callbacks that do NOT branch on payload (pass-through or arithmetic)
+cpg.method.parameter.typeFullName(".*Sample.*").method
+  .whereNot(_.ast.isCall.name("<operator>.equals")
+    .where(_.argument.code(".*get_payload.*|.*as_string.*")))
+  .name
+  .l
+```
+
+---
+
+## Phase 8 — Main Loop Classification
+
+```scala
+// Q47: Identify infinite loops in main() — for(;;), while(true)
+cpg.method.name("main")
+  .ast.isControlStructure
+  .controlStructureType("FOR|WHILE")
+  .map(cs => Map(
+    "file"      -> cs.file.name.head,
+    "type"      -> cs.controlStructureType,
+    "condition" -> cs.condition.code,
+    "line"      -> cs.lineNumber.getOrElse(-1)
+  ))
+  .l
+
+// Q48: put() calls reachable from main() (direct or via callees)
+cpg.method.name("main")
+  .repeat(_.callee)(_.emit)
+  .isCall.name("put")
+  .map(c => (c.file.name.head, c.argument(0).code, c.lineNumber))
+  .dedup
+  .l
+
+// Q49: put() calls DIRECTLY inside main() body
+cpg.method.name("main")
+  .ast.isCall.name("put")
+  .map(c => Map(
+    "file"     -> c.file.name.head,
+    "receiver" -> c.argument(0).code,
+    "payload"  -> c.argument(1).code,
+    "line"     -> c.lineNumber.getOrElse(-1)
+  ))
+  .l
+
+// Q50: Sleep calls inside main (indicates periodic driver)
+cpg.method.name("main")
+  .ast.isCall.name(".*sleep.*")
+  .map(c => (c.file.name.head, c.code, c.lineNumber))
+  .l
+
+// Q51: Classify main() per file
+cpg.method.name("main").map { m =>
+  val hasPut = m.ast.isCall.name("put").nonEmpty
+  val hasLoop = m.ast.isControlStructure
+    .controlStructureType("FOR|WHILE").nonEmpty
+  val hasSleep = m.ast.isCall.name(".*sleep.*").nonEmpty
+  Map(
+    "file"     -> m.filename,
+    "hasPut"   -> hasPut,
+    "hasLoop"  -> hasLoop,
+    "hasSleep" -> hasSleep,
+    "classification" -> (
+      if (!hasPut) "reactive"
+      else if (hasLoop && hasSleep) "periodic_driver"
+      else if (hasLoop) "polling_state_machine"
+      else "one_shot"
+    )
+  )
+}.l
+
+// Q52: Extract loop body actions in main() (for driver handler generation)
+cpg.method.name("main")
+  .ast.isControlStructure.controlStructureType("FOR|WHILE")
+  .astChildren.isBlock
+  .ast.isCall.nameNot("<operator>.*")
+  .map(c => Map(
+    "call"    -> c.name,
+    "code"    -> c.code,
+    "line"    -> c.lineNumber.getOrElse(-1)
+  ))
+  .l
+
+// Q53: Counter/state variables modified inside main loop
+cpg.method.name("main")
+  .ast.isControlStructure.controlStructureType("FOR|WHILE")
+  .ast.isCall.name("<operator>.assignment|<operator>.postIncrement|<operator>.preIncrement")
+  .argument(1)
+  .isIdentifier
+  .map(i => (i.name, i.typeFullName))
+  .dedup
+  .l
+```
+
+---
+
+## Phase 9 — Inter-Callback Data Flow (Shared State Dependencies)
+
+```scala
+// Q54: Data flow from assignment in callback A to condition-read in callback B
+// Example: TX_TRAIL written in nak_callback, read in main
+def source54 = cpg.method.name("nak_callback")
+  .ast.isCall.name("<operator>.assignment")
+  .argument(1).isIdentifier.name("TX_TRAIL")
+
+def sink54 = cpg.method.name("main")
+  .ast.isControlStructure.condition
+  .ast.isIdentifier.name("TX_TRAIL")
+
+sink54.reachableByFlows(source54).p
+
+// Q55: Generic cross-callback data flow for all shared state variables
+// For each state var: find all writing callbacks and reading callbacks
+cpg.identifier
+  .map(i => (i.name, i.method.name, i.file.name.head))
+  .l
+  .groupBy(_._1)
+  .filter { case (_, refs) => refs.map(_._2).distinct.size > 1 }
+  .mapValues(_.map(r => (r._2, r._3)).distinct)
+
+// Q56: For a specific state variable, trace all writes → reads across methods
+def source56 = cpg.call.name("<operator>.assignment")
+  .where(_.argument(1).code("LAST_RECEIVED"))
+def sink56 = cpg.identifier.name("LAST_RECEIVED")
+  .where(_.inCall.nameNot("<operator>.assignment").argument(1))
+sink56.reachableByFlows(source56).p
+
+// Q57: Guards — conditions that reference state variables in callbacks
+cpg.method.parameter.typeFullName(".*Sample.*").method
+  .ast.isControlStructure.controlStructureType("IF")
+  .condition
+  .ast.isIdentifier
+  .map(i => Map(
+    "callback" -> i.method.name,
+    "guardVar" -> i.name,
+    "inFile"   -> i.file.name.head
+  ))
+  .dedup
+  .l
+
+// Q58: For each state variable, which callbacks WRITE it and which READ it in guards
+val allCallbacks = cpg.method.parameter.typeFullName(".*Sample.*").method.name.l
+
+cpg.identifier
+  .where(_.method.name(allCallbacks.mkString("|")))
+  .map(i => (i.name, i.method.name))
+  .l
+  .distinct
+  .groupBy(_._1)
+
+// Q59: Full dependency graph: callback A writes var X → callback B guards on X
+val writeMap = cpg.call.name("<operator>.assignment")
+  .where(_.method.parameter.typeFullName(".*Sample.*"))
+  .map(a => (a.argument(1).code, a.method.name))
+  .l.distinct
+
+val guardMap = cpg.method.parameter.typeFullName(".*Sample.*").method
+  .ast.isControlStructure.condition
+  .ast.isIdentifier
+  .map(i => (i.name, i.method.name))
+  .l.distinct
+
+for {
+  (wvar, wmethod) <- writeMap
+  (gvar, gmethod) <- guardMap
+  if wvar == gvar && wmethod != gmethod
+} yield Map("writer" -> wmethod, "var" -> wvar, "guarder" -> gmethod)
+```
+
+---
+
+## Phase 10 — Dynamic Pub/Sub (Runtime Key Construction)
+
+```scala
+// Q60: Track variables used in key expression construction
+// e.g., "phil/" + zid + "/send"
+cpg.call.name("declare_publisher")
+  .argument(1)
+  .ast.isIdentifier
+  .map(i => Map(
+    "varInKeyExpr" -> i.name,
+    "declFile"     -> i.file.name.head
+  ))
+  .l
+
+// Q61: Trace where the dynamic key variable gets its value
+def source61 = cpg.identifier.name("zid")
+  .where(_.inCall.name("<operator>.assignment").argument(1))
+def sink61 = cpg.call.name("declare_publisher").argument(1).ast.isIdentifier.name("zid")
+sink61.reachableByFlows(source61).p
+
+// Q62: Find string concatenation patterns building key expressions
+cpg.call.name("<operator>.addition")
+  .where(_.argument.isLiteral.code(".*phil/.*|.*table/.*"))
+  .map(c => (c.code, c.file.name.head, c.lineNumber))
+  .l
+```
+
+---
+
+## Phase 11 — Connection/Initialization Protocol Discovery
+
+```scala
+// Q63: Detect connection handshake patterns
+// session.put("table/connect", ...) calls
+cpg.call.name("put")
+  .where(_.argument(0).code(".*session.*"))
+  .map(c => Map(
+    "file"    -> c.file.name.head,
+    "keyExpr" -> c.argument(1).code,
+    "payload" -> c.argument(2).code,
+    "line"    -> c.lineNumber.getOrElse(-1),
+    "method"  -> c.method.name
+  ))
+  .l
+
+// Q64: Subscribers for connection events
+cpg.call.name("declare_subscriber")
+  .where(_.argument(1).code(".*connect.*"))
+  .map(c => Map(
+    "file"     -> c.file.name.head,
+    "keyExpr"  -> c.argument(1).code,
+    "callback" -> c.argument(2).code
+  ))
+  .l
+
+// Q65: Blocking waits (polling on state variable) — indicates sync handshake
+cpg.method.name(".*")
+  .ast.isControlStructure.controlStructureType("WHILE")
+  .where(_.condition.ast.isIdentifier)
+  .map(w => Map(
+    "method"    -> w.method.name,
+    "file"      -> w.file.name.head,
+    "condition" -> w.condition.code,
+    "line"      -> w.lineNumber.getOrElse(-1)
+  ))
+  .l
+```
+
+---
+
+## Phase 12 — Struct / Class Member Analysis (for table.cpp-style components)
+
+```scala
+// Q66: All struct/class type declarations
+cpg.typeDecl
+  .nameNot("<.*>")
+  .map(t => Map(
+    "name"    -> t.name,
+    "file"    -> t.file.name.head,
+    "members" -> t.member.map(m => (m.name, m.typeFullName)).l
+  ))
+  .l
+
+// Q67: Array declarations (e.g., bool forks[NUM_PHIL-1])
+cpg.local
+  .typeFullName(".*\\[.*")
+  .map(l => (l.name, l.typeFullName, l.method.name, l.file.name.head))
+  .l
+
+// Q68: Array index accesses — important for fork/philosopher ID mapping
+cpg.call.name("<operator>.indirectIndexAccess|<operator>.indexAccess")
+  .map(c => Map(
+    "array" -> c.argument(1).code,
+    "index" -> c.argument(2).code,
+    "line"  -> c.lineNumber.getOrElse(-1),
+    "file"  -> c.file.name.head
+  ))
+  .l
+
+// Q69: Member access on publisher/subscriber objects (optional<Publisher>.put)
+cpg.call.name("put")
+  .argument(0)
+  .map(a => Map(
+    "receiverCode" -> a.code,
+    "receiverType" -> a.typeFullName,
+    "file"         -> a.file.name.head
+  ))
+  .l
+```
+
+---
+
+## Phase 13 — Complete Callback Body AST Dump (for codegen)
+
+```scala
+// Q70: Full AST dump of a callback as JSON (for Python-side CFG-to-Dezyne conversion)
+cpg.method.name("nak_callback")
+  .ast
+  .map(n => Map(
+    "id"       -> n.id,
+    "label"    -> n.label,
+    "code"     -> n.code,
+    "order"    -> n.order,
+    "line"     -> n.lineNumber.getOrElse(-1),
+    "children" -> n.astChildren.map(c => c.id).l
+  ))
+  .toJsonPretty
+
+// Q71: AST of all callbacks, grouped
+cpg.method.parameter.typeFullName(".*Sample.*").method
+  .map { m =>
+    Map(
+      "name" -> m.name,
+      "file" -> m.filename,
+      "ast"  -> m.ast.map(n => Map(
+        "id"    -> n.id,
+        "label" -> n.label,
+        "code"  -> n.code,
+        "order" -> n.order
+      )).l
+    )
+  }.toJsonPretty
+
+// Q72: CFG edges for a callback (for Python-side CFG walking)
+cpg.method.name("nak_callback")
+  .ast
+  .map(n => Map(
+    "id"       -> n.id,
+    "code"     -> n.code,
+    "cfgNext"  -> n.cfgNext.map(_.id).l
+  ))
+  .toJsonPretty
+```
+
+---
+
+## Phase 14 — Payload Data Flow (for extern parameter detection)
+
+```scala
+// Q73: Trace data flow from sample.get_payload() to put() payload argument
+// (detects pass-through components like netelem)
+def source73 = cpg.call.name("as_string")
+  .where(_.code(".*get_payload.*"))
+def sink73 = cpg.call.name("put").argument(1)
+sink73.reachableByFlows(source73).p
+
+// Q74: Trace data flow from get_payload() to arithmetic operations
+// (detects content transformation — seq number extraction)
+def source74 = cpg.call.name("as_string")
+def sink74 = cpg.call.name("stoi|stof|stod|atoi|atof")
+sink74.reachableByFlows(source74).p
+
+// Q75: Identify which callbacks just forward the payload unchanged
+cpg.method.parameter.typeFullName(".*Sample.*").method
+  .where(_.ast.isCall.name("put")
+    .where(_.argument(1).code(".*get_payload.*|.*as_string.*")))
+  .name
+  .l
+```
+
+---
+
+## Phase 15 — Export Helpers
+
+```scala
+// Q76: Export full call graph as edges
+cpg.call.nameNot("<operator>.*")
+  .map(c => Map(
+    "caller"   -> c.method.name,
+    "callee"   -> c.name,
+    "file"     -> c.file.name.head,
+    "line"     -> c.lineNumber.getOrElse(-1)
+  ))
+  .toJsonPretty #> "/tmp/callgraph.json"
+
+// Q77: Export all Zenoh API calls as JSON manifest
+cpg.call.name("declare_publisher|declare_subscriber|put|open")
+  .map(c => Map(
+    "api"        -> c.name,
+    "code"       -> c.code,
+    "file"       -> c.file.name.head,
+    "line"       -> c.lineNumber.getOrElse(-1),
+    "method"     -> c.method.name,
+    "arg1"       -> c.argument(1).code,
+    "arg2"       -> c.argument.order(2).code.headOption.getOrElse("")
+  ))
+  .toJsonPretty #> "/tmp/zenoh_api_manifest.json"
+
+// Q78: Export state variable dependency graph as JSON
+// (uses writeMap/guardMap from Q59)
+// ... see Q59, then:
+// result.toJsonPretty #> "/tmp/state_deps.json"
+```
+
+---
+
+**Notes on C++ / Joern Specifics:**
+
+- Joern's c2cpg frontend models C++ member calls as `call` nodes where `argument(0)` is the receiver object. For `publisher.put(payload)`, `argument(0).code` gives `publisher` and `argument(1).code` gives `payload`.
+- Operators like `==`, `<`, `>`, `&&`, `=`, `++` appear as calls named `<operator>.equals`, `<operator>.lessThan`, `<operator>.greaterThan`, `<operator>.logicalAnd`, `<operator>.assignment`, `<operator>.postIncrement`, etc.
+- c2cpg may require zenoh headers in the include path for full type resolution. Use `--include /path/to/zenoh-cpp/include` or a `compile_commands.json` via `--compilation-database`.
+- `run.ossdataflow` must be called before any `reachableBy` / `reachableByFlows` queries.
+- Regex patterns in `.name("...")` use Java regex (e.g., `.*` for wildcard, `|` for alternation).

@@ -1,2 +1,0 @@
-cpg.call.name("[declare_subscriber]|[declare_publisher]") -> CALL nodes for each pub/sub
-
