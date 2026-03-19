@@ -1,9 +1,16 @@
 from querier import Querier
+from dataclasses import dataclass
+
+@dataclass
+class Node:
+    filename: str
+    publishers: list
+    subscribers: tuple
 
 class Builder:
     def __init__(self):
         self.querier = Querier()
-        self.data = {}
+        self.data = []
 
     def populatePublishers(self, project_name: str):
         pubs = self.querier.get_publishers()
@@ -12,6 +19,7 @@ class Builder:
                 key_list = [expr['keyExpr'] for expr in keyExprs]
                 if fileName not in self.data:
                     self.data[fileName] = {}
+                self.data.append(Node(fileName, ))
                 self.data[fileName]["publishers"] = key_list
     
     def populateSubscribers(self, project_name: str):

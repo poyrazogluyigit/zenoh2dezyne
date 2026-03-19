@@ -101,7 +101,7 @@ class Querier:
 
     def get_publishers(self):
         # Send a command to get the list of publishers
-        command = '''cpg.call.name(\"declare_publisher\").l
+        command = '''cpg.call.name(\"[declare_publisher]|[declare_subscriber]\").l
         .groupBy(_.file.name.headOption.getOrElse(\"unknown\"))
         .map { case (fileName, calls) =>
         fileName -> calls.map(c => Map(
@@ -120,6 +120,13 @@ class Querier:
         "callback" -> c.argument(2).code
         ))
         }.toJson'''
+        return self.toList(self.sendQuery(command))
+    
+    # TODO complete this such that each put along with their control flows are returned
+    def get_callback(self, callback_name: str):
+        command = f'''cpg.method.name(\"{callback_name}\")
+        .call.name(\"put\").l
+        '''
         return self.toList(self.sendQuery(command))
     
     def stop(self):
