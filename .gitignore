@@ -7,3 +7,4 @@ build/
 .scala-build/
 .venv/
 joern_includes/
+src/__pycache__
