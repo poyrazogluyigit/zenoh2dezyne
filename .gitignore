@@ -3,3 +3,7 @@ examples/**/build/
 .cache/
 .vscode
 build/
+.metals/
+.scala-build/
+.venv/
+joern_includes/

@@ -8,21 +8,21 @@ void odata_cb(const zenoh::Sample& sample) {
     // TODO consider delay logic here
     odata_rdir.put(sample.get_payload().as_string());
 }
-auto odata = session.declare_subscriber("pgm/odata/sn", odata_cb, zenoh::closures::none);
+auto odata = session.declare_subscriber("pgm/odata/sn", &odata_cb, zenoh::closures::none);
 
 auto rdata_rdir = session.declare_publisher("pgm/rdata/nr");
 void rdata_cb(const zenoh::Sample& sample) {
      // TODO consider delay logic here
     rdata_rdir.put(sample.get_payload().as_string());   
 }
-auto rdata = session.declare_subscriber("pgm/rdata/sn", rdata_cb, zenoh::closures::none);
+auto rdata = session.declare_subscriber("pgm/rdata/sn", &rdata_cb, zenoh::closures::none);
 
 auto spm_rdir = session.declare_publisher("pgm/spm/nr");
 void spm_cb(const zenoh::Sample& sample) {
      // TODO consider delay logic here
     spm_rdir.put(sample.get_payload().as_string());   
 }
-auto spm = session.declare_subscriber("pgm/spm/sn", spm_cb, zenoh::closures::none);
+auto spm = session.declare_subscriber("pgm/spm/sn", &spm_cb, zenoh::closures::none);
 
 int main(){
 
