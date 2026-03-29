@@ -8,3 +8,4 @@ build/
 .venv/
 joern_includes/
 src/__pycache__
+generate/

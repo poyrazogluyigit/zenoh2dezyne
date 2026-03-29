@@ -44,7 +44,7 @@ class Querier:
         try:
             return json.loads(rhs)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse response as JSON: {e}\nRaw String: {rhs[:200]}")
+            raise ValueError(f"Failed to parse response as JSON: {e}\nRaw String: {rhs}")
 
     def start(self, timeout: int = 60):
         """Start the Joern Server process and wait for it to be ready."""
@@ -101,7 +101,7 @@ class Querier:
 
     def get_publishers(self):
         # Send a command to get the list of publishers
-        command = '''cpg.call.name(\"[declare_publisher]|[declare_subscriber]\").l
+        command = '''cpg.call.name(\"declare_publisher\").l
         .groupBy(_.file.name.headOption.getOrElse(\"unknown\"))
         .map { case (fileName, calls) =>
         fileName -> calls.map(c => Map(
@@ -122,10 +122,33 @@ class Querier:
         }.toJson'''
         return self.toList(self.sendQuery(command))
     
-    # TODO complete this such that each put along with their control flows are returned
-    def get_callback(self, callback_name: str):
-        command = f'''cpg.method.name(\"{callback_name}\")
-        .call.name(\"put\").l
+    '''
+    FIXME This may not consider session.put() messages correctly
+    '''
+    def get_callback_control_flows(self, file_name:str, callback_name: str):
+        command = f'''cpg.method("{callback_name}").call.name("put").map {{ v =>
+        val recvName = v.receiver.isIdentifier.name.headOption.getOrElse("")
+        val fname    = "{file_name}"
+     
+        val keyExpr = cpg.call
+          .name("declare_publisher")
+          .where(_.file.nameExact(fname))
+          .where(_.inAssignment.argument(1).isIdentifier.nameExact(recvName))
+          .argument(1)
+          .code
+          .headOption
+          .getOrElse("")
+     
+        val controlFlow =
+            v.inAst.isControlStructure
+            .map(cs => (cs.controlStructureType, cs.condition.code.headOption.getOrElse("")))
+            .l
+     
+        Map(
+          "keyExpr"     -> keyExpr,
+          "controlFlow" -> controlFlow
+        )
+      }}.toJson
         '''
         return self.toList(self.sendQuery(command))
     
@@ -145,6 +168,8 @@ if __name__ == "__main__":
     querier.openProject("pgm-no-zenoh")
     resp = querier.get_publishers()
     resp2 = querier.get_subscribers()
+    resp3 = querier.get_callback_control_flows("receiver.cpp", "data_cb")
     print(resp)
     print(resp2)
+    print(resp3)
     querier.stop()
