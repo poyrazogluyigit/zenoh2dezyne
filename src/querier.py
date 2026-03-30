@@ -4,6 +4,7 @@ import requests
 import time
 import json
 import re
+import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class Querier:
     def __init__(self, joern_server: str = ""):
         self.proc = None
         self.joern_server = joern_server
+        atexit.register(self.stop)
 
     def sendQuery(self, query: str):
         if not self.proc:
