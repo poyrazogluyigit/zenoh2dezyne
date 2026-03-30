@@ -1,22 +1,28 @@
+import logging
 from subprocess import Popen, PIPE
 import requests
 import time
 import json
 import re
 
-class Querier:
-    def __init__(self):
-        self.proc = None
+logger = logging.getLogger(__name__)
 
+class Querier:
+    def __init__(self, joern_server: str = ""):
+        self.proc = None
+        self.joern_server = joern_server
 
     def sendQuery(self, query: str):
         if not self.proc:
-            raise RuntimeError("Joern is not running. Call start() first.")
+            logger.error("Joern is not running. Call start() first.")
+            exit(1)
+        logger.debug(f"Sending query to Joern: {query[:100]}...")
         response = requests.post(
-            "http://127.0.0.1:8080/query-sync", 
+            f"{self.joern_server}/query-sync", 
             json={"query": query}
         )
         response.raise_for_status()
+        logger.debug(f"Received response from Joern: {response.text[:100]}...")    
         return response.json().get("stdout", "")
 
     def toList(self, response: str):
@@ -44,10 +50,12 @@ class Querier:
         try:
             return json.loads(rhs)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse response as JSON: {e}\nRaw String: {rhs}")
+            logger.error(f"Failed to parse response as JSON: {e}\nRaw String: {rhs}")
+            exit(1)
 
     def start(self, timeout: int = 60):
         """Start the Joern Server process and wait for it to be ready."""
+        logger.debug("Starting Joern server process...")
         self.proc = Popen(['joern', '--server'], 
                           stdin=PIPE, 
                           stdout=PIPE, 
@@ -62,7 +70,8 @@ class Querier:
             
             try:
                 # Attempt to connect to the server
-                requests.get("http://127.0.0.1:8080", timeout=1)
+                requests.get(self.joern_server, timeout=1)
+                logger.debug("Joern server successfully started and is reachable.")
                 break  # Successful connection means server is up
             except requests.exceptions.RequestException:
                 if time.time() - start_time > timeout:
@@ -155,6 +164,7 @@ class Querier:
     def stop(self):
         """Terminate the Joern process."""
         if self.proc:
+            logger.debug("Terminating Joern process.")
             if self.proc.stdin:
                 self.proc.stdin.close()
             self.proc.terminate()

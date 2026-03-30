@@ -1,22 +1,30 @@
+import logging
 from builder import Builder
 from containers import *
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 class CodeGenerator:
-    def __init__(self, project_name: str, output_dir: str = ""):
-        self.builder = Builder()
+    def __init__(self, project_name: str, output_dir: str = "", joern_server: str = ""):
+        self.builder = Builder(joern_server)
         self.project_name = project_name
-        self.output_dir = Path.cwd() / "generate" if output_dir == "" else Path(output_dir)
+        self.output_dir = Path(output_dir)
         self.indent_amt = 0
 
     def fetch_units(self):
+        logger.debug(f"Fetching units for project '{self.project_name}'")
         self.units = list(self.builder.buildDict(self.project_name).values())
 
     def generate_code(self):
+        logger.debug("Generating code from units")
         self.fetch_units()
+        logger.debug(f"Ensuring output directory exists: {self.output_dir}")
         Path.mkdir(self.output_dir, parents=True, exist_ok=True)
         for unit in self.units:
-            with open(self.output_dir / (unit.filename.rsplit('.', 1)[0] + ".dzn"), "w") as f:
+            out_file = self.output_dir / (unit.filename.rsplit('.', 1)[0] + ".dzn")
+            logger.debug(f"Writing generated code for unit to: {out_file}")
+            with open(out_file, "w") as f:
                 f.write(self.generate_unit_code(unit))
 
     def indent(self, code: str):
