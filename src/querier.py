@@ -12,6 +12,7 @@ class Querier:
     def __init__(self, joern_server: str = ""):
         self.proc = None
         self.joern_server = joern_server
+        self.session = requests.Session()
         atexit.register(self.stop)
 
     def sendQuery(self, query: str):
@@ -19,7 +20,7 @@ class Querier:
             logger.error("Joern is not running. Call start() first.")
             exit(1)
         logger.debug(f"Sending query to Joern: {query[:100]}...")
-        response = requests.post(
+        response = self.session.post(
             f"{self.joern_server}/query-sync", 
             json={"query": query}
         )
@@ -72,7 +73,7 @@ class Querier:
             
             try:
                 # Attempt to connect to the server
-                requests.get(self.joern_server, timeout=1)
+                self.session.get(self.joern_server, timeout=1)
                 logger.debug("Joern server successfully started and is reachable.")
                 break  # Successful connection means server is up
             except requests.exceptions.RequestException:
@@ -171,6 +172,7 @@ class Querier:
                 self.proc.stdin.close()
             self.proc.terminate()
             self.proc.wait()
+            self.session.close()
             self.proc = None
 
 
