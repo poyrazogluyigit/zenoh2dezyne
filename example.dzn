@@ -21,7 +21,7 @@ interface example {
             on inevitable:
                 s = ACT;
         } 
-        [GET_COMM] {
+        [ACT] {
             [a_on] {
                 // ...
                 dummy = true;
