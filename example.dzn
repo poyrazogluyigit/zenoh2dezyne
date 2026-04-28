@@ -1,0 +1,42 @@
+interface example {
+    in void a, b;
+    enum State {GET_COMM, ACT};
+
+    behavior {
+        State s = ACT;
+        bool a_on = false;
+
+        bool b_on = true;
+        bool b_looping = false;
+
+        bool dummy = false;
+    
+        [GET_COMM] {
+            on a:
+                a_on = true;
+                s = ACT;
+            on b:
+                b_on = true;
+                s = ACT;
+            on inevitable:
+                s = ACT;
+        } 
+        [GET_COMM] {
+            [a_on] {
+                // ...
+                dummy = true;
+            }
+            // suppose callback of b contains loops
+            [b_on] {
+                // ...
+                dummy = false;
+            }
+            // main loop
+            [otherwise] {
+                // ...
+                dummy = true;
+            }
+            s = GET_COMM;
+        }
+    }
+}
