@@ -1,0 +1,11 @@
+interface ILoop {
+    in void startLoop();
+    out void endLoop();
+    out void loopIteration();
+    behavior {
+        bool isRunning = false;
+        on startLoop: isRunning = true;
+        on inevitable: loopIteration;
+        on inevitable: { endLoop; isRunning = false;}
+    }
+}

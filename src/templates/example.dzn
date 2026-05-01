@@ -1,9 +1,11 @@
 interface example {
-    in void a, b;
+    in void a();
+    in void b();
     enum State {GET_COMM, ACT};
 
     behavior {
-        State s = ACT;
+
+        State s = State.ACT;
         bool a_on = false;
 
         bool b_on = true;
@@ -11,32 +13,37 @@ interface example {
 
         bool dummy = false;
     
-        [GET_COMM] {
-            on a:
+        [s.GET_COMM] {
+            on a: {
                 a_on = true;
-                s = ACT;
-            on b:
+                s = State.ACT;
+            }
+            on b: {
                 b_on = true;
-                s = ACT;
+                s = State.ACT;
+
+            }
             on inevitable:
-                s = ACT;
+                s = State.ACT;
         } 
-        [ACT] {
+        [s.ACT] {
             [a_on] {
                 // ...
                 dummy = true;
+                s = State.GET_COMM;
             }
             // suppose callback of b contains loops
             [b_on] {
                 // ...
                 dummy = false;
+                s = State.GET_COMM;
             }
             // main loop
             [otherwise] {
                 // ...
                 dummy = true;
+                s = State.GET_COMM;
             }
-            s = GET_COMM;
         }
     }
 }

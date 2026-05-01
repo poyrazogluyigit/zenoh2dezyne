@@ -1,0 +1,53 @@
+interface example {
+    in void a();
+    in void b();
+    enum State {GET_COMM, ACT};
+
+    behavior {
+
+        State s = State.ACT;
+        bool a_on = false;
+        bool b_on = false;
+
+        bool dummy = false;
+
+        void a_bhv() {
+            // ...
+            dummy = true;
+            s = State.GET_COMM;
+        }
+
+        void b_bhv() {
+            // ...
+            dummy = false;
+            s = State.GET_COMM;
+        }
+    
+        void main_bhv() {
+            // ...
+            dummy = true;
+            s = State.GET_COMM;
+        }
+
+        [s.GET_COMM] {
+            on a: {
+                a_on = true;
+                s = State.ACT;
+            }
+            on b: {
+                b_on = true;
+                s = State.ACT;
+            }
+            on inevitable: {
+                s = State.ACT;
+                dummy = true;
+            }
+        } 
+        [s.ACT] {
+            [a_on] a_bhv();
+            [b_on] b_bhv();
+            // main loop
+            [otherwise] main_bhv();
+        }
+    }
+}
