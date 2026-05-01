@@ -1,0 +1,30 @@
+interface A_callback {
+    out void A_pub();
+    out void C_pub();
+
+    in void step();
+    out void exit();
+
+    subint State{1..7};
+
+    behavior {
+        State s = 1;
+        on step: {
+            [s < 3] i++;
+            // loop condition ignored here
+            [s == 3] s = 4;
+            [s == 3] s = 6;
+            /*
+                Looplar uzerine bazi notlar:
+                    su anda model loop hic calismayabilir ya da
+                    sonsuza kadar calisabilir kosullarini da kabul ediyor
+                    daha iyi refine etmek icin kontrol degiskenini halletmek gerekecek
+            */
+            [s == 4] { C_pub; s = 5; }
+            [s == 5] s = 3;
+            [s == 6] {A_pub; s = 7;}
+            [s == 7] exit;
+
+        }
+    }
+}

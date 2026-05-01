@@ -10,14 +10,14 @@ int main() {
 
     bool pubSelect = false;
 
-    auto AC_callback = [&](){
+    auto AB_callback = [&](){
         if (pubSelect) A_pub.put("example payload to A");
         else B_pub.put("example payload to B");
         pubSelect = !pubSelect;
     };
 
-    auto A_sub = session.declare_subscriber("basic/B/A", &AC_callback, zenoh::closures::none);
-    auto C_sub = session.declare_subscriber("basic/B/C", &AC_callback, zenoh::closures::none);
+    auto A_sub = session.declare_subscriber("basic/C/A", &AB_callback, zenoh::closures::none);
+    auto C_sub = session.declare_subscriber("basic/C/B", &AB_callback, zenoh::closures::none);
 
 
     while (true) {

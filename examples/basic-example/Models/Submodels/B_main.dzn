@@ -1,0 +1,22 @@
+interface B_main {
+
+    in void step();
+    out void exit();
+
+    subint State{0..26};
+
+    behavior {
+        State s = 1;
+        on step: {
+            [s < 25] s = s + 1;
+            // [s == 25] loop state
+            [s == 26] exit();
+        }
+        /*
+        on inevitable: {
+                [s == 25] s = 26;
+            }
+        */
+    }
+
+}

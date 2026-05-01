@@ -1,0 +1,27 @@
+interface AB_callback {
+    out void A_pub();
+    out void B_pub();
+
+    in void step();
+    out void exit();
+
+    subint State{1..7};
+
+    behavior {
+        State s = 1;
+        // TODO what if this is uninitialized
+        bool pubSelect = false;
+
+        on step: {
+            [s == 1] s = 2;
+            // kontrol degiskeni hesaba katildi
+            [s = 2 && pubSelect] s = 3;
+            [s = 2 && !pubSelect] s = 4;
+            [s == 3] { A_pub; s = 5; }
+            [s == 4] { C_pub; s = 5; }
+            [s == 5] s = 6;
+            [s == 6] { pubSelect = !pubSelect; s = 7; }
+            [s == 7] exit();
+        }
+    }
+}

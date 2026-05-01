@@ -1,0 +1,18 @@
+import Submodels/A_main.dzn;
+import Submodels/A_callback.dzn;
+import Utils/Step.dzn;
+
+component A {
+
+    out void basic_B_A();
+
+    provides A_main main;
+    requires Step step;
+
+    behavior {
+        on A_main.B_pub(): basic_B_A();
+        on step.step(): A_main.step();
+    }
+
+
+}

@@ -1,0 +1,22 @@
+interface C_main {
+
+    in void step();
+    out void exit();
+
+    subint State{0..25};
+
+    behavior {
+        State s = 1;
+        on step: {
+            [s < 24] s = s + 1;
+            // [s == 24] loop state
+            [s == 25] exit();
+        }
+        /*
+        on inevitable: {
+                [s == 24] s = 25;
+            }
+        */
+    }
+
+}

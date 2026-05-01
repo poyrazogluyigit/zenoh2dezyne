@@ -1,0 +1,22 @@
+import A.dzn;
+import B.dzn;
+import C.dzn;
+
+
+component Top {
+
+    A A;
+    B B;
+    C C;
+
+    system {
+        A.basic_B_A <=> B.basic_B_A;
+        
+        B.basic_A_B <=> A.basic_A_B;
+        B.basic_C_B <=> C.basic_C_B;
+
+        C.basic_A_C <=> A.basic_A_C;
+        C.basic_B_C <=> B.basic_B_C;
+    }
+
+}

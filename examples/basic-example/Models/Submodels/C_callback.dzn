@@ -1,0 +1,13 @@
+interface C_callback {
+    in void step();
+    out void exit();
+
+    subint State{1..2};
+
+    behavior {
+        State s = 1;
+        on step:
+            [s == 1] s = 2;
+            [s == 2] exit;
+    }
+}

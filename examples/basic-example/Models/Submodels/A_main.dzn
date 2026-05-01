@@ -1,0 +1,38 @@
+interface A_main {
+
+    out void B_pub();
+    // out void C_pub;
+
+    in void step();
+    // out void exit();
+
+    
+    enum State {
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+    };
+
+    behavior {
+        State s = State.1;
+        on step: {
+            [s.1] s = 2;
+            [s.2] s = 3;
+            [s.3] s = 4;
+            [s.4] s = 5;
+            [s.5] s = 6;
+            [s.6] s = 7;
+            [s.7] s = 8;
+            [s.8] s = 9;
+            [s.9] s = 10;
+            [s.10] {
+                B_pub(); s = 9;
+            }
+            /*
+            [s.10] {
+                s = 11; 
+            }
+            [s.11] exit();
+            */
+        }
+    }
+
+}

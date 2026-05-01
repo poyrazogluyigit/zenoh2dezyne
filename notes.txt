@@ -1,7 +1,0 @@
-cpg.call.name("[declare_subscriber]|[declare_publisher]") -> CALL nodes for each pub/sub
--> zenoh libs must be in project root dir for including zenoh in the cpg
-
-// List all non-library include source files
-cpg.file.name.filterNot(_.contains("joern_includes")).label
-
-

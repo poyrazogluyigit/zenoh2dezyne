@@ -1,0 +1,36 @@
+import Utils/Step.dzn;
+import Submodels/C_main.dzn;
+import Submodels/AB_callback.dzn;
+
+component C {
+
+    out void basic_A_C();
+    out void basic_B_C();
+
+    in void basic_C_A();
+    in void basic_C_B();
+
+    provides C_main C_main;
+    provides AB_callback AB_callback;
+    requires Step step;
+
+
+    enum CurrentExecution {CMain, ABCallback};
+
+    behavior {
+        CurrentExecution cur = CMain;
+        [cur.BMain] {
+            on step.step(): C_main.step();
+            on basic_C_A: cur = CurrentExecution.ABCallback;
+            on basic_C_B: cur = CurrentExecution.ABCallback;
+
+        }
+        [cur.ABCallback] {
+            on step.step(): A_callback.step();
+            on AB_callback.A_pub(): basic_A_C();
+            on A_callback.B_pub(): basic_B_C();
+            on A_callback.exit(): cur = CurrentExecution.CMain;
+        }
+    }
+
+}

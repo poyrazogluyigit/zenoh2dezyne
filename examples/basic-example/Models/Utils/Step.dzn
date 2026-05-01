@@ -1,0 +1,7 @@
+interface Step {
+    out void step();
+
+    behavior {
+        on inevitable: step;
+    }
+}
