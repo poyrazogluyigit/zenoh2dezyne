@@ -1,26 +1,24 @@
-interface IA_MAIN {
-    out void B_pub();
-    // out void C_pub;
+import Utils/Step.dzn;
 
-    in void step();
-    // out void exit();
+interface IA {
+    out void basic_B_A();
 
     behavior {
-        on step: {}
-        on step: B_pub;
+        on inevitable: basic_B_A;
     }
 }
 
-component A_MAIN {
+component A {
 
-    provides IA_MAIN main;
+    provides IA A_top;
+    requires IStep step;
 
     behavior {
 
         subint State {1..11};
         State s = 1;
 
-        on main.step(): {
+        on step.step(): {
             [s == 1] s = 2;
             [s == 2] s = 3;
             [s == 3] s = 4;
@@ -31,7 +29,7 @@ component A_MAIN {
             [s == 8] s = 9;
             [s == 9] s = 10;
             [s == 10] {
-                main.B_pub(); s = 9;
+                A_top.basic_B_A(); s = 9;
             }
             /*
             [s == 10] {
@@ -41,5 +39,4 @@ component A_MAIN {
             */
         }
     }
-
 }
