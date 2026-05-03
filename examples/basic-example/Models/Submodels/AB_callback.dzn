@@ -1,27 +1,38 @@
-interface AB_callback {
+interface IAB_CB {
     out void A_pub();
     out void B_pub();
 
     in void step();
     out void exit();
 
-    subint State{1..7};
+    behavior {
+        on step: {}
+        on step: A_pub;
+        on step: B_pub;
+        on step: exit;
+    }
+}
+
+component AB_CB {
+    
+    provides IAB_CB cb;
 
     behavior {
+        subint State{1..7};
         State s = 1;
         // TODO what if this is uninitialized
         bool pubSelect = false;
 
-        on step: {
+        on cb.step(): {
             [s == 1] s = 2;
             // kontrol degiskeni hesaba katildi
             [s == 2 && pubSelect] s = 3;
             [s == 2 && !pubSelect] s = 4;
-            [s == 3] { A_pub; s = 5; }
-            [s == 4] { B_pub; s = 5; }
+            [s == 3] { cb.A_pub(); s = 5; }
+            [s == 4] { cb.B_pub(); s = 5; }
             [s == 5] s = 6;
             [s == 6] { pubSelect = !pubSelect; s = 7; }
-            [s == 7] exit;
+            [s == 7] cb.exit();
         }
     }
 }

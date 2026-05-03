@@ -3,13 +3,17 @@ import Utils/Step.dzn;
 
 interface IA {
     out void basic_B_A();
+
+    behavior {
+        on inevitable: basic_B_A;
+    }
 }
 
 component A {
 
     provides IA A_top;
-    provides A_main main;
-    requires Step step;
+    requires IA_MAIN main;
+    requires IStep step;
 
     behavior {
         on main.B_pub(): A_top.basic_B_A();

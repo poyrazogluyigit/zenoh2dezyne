@@ -10,14 +10,19 @@ interface IC {
     in void basic_C_A();
     in void basic_C_B();
 
+    behavior {
+        on basic_C_A, basic_C_B: basic_B_C;
+        on basic_C_A, basic_C_B: basic_A_C;
+    }
+
 }
 
 component C {
 
     provides IC C_top;
-    provides C_main C_main;
-    provides AB_callback AB_callback;
-    requires Step step;
+    requires IC_MAIN C_main;
+    requires IAB_CB AB_callback;
+    requires IStep step;
 
 
     behavior {

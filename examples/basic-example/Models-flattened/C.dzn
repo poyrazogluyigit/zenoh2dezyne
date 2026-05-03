@@ -1,0 +1,61 @@
+import Utils/Step.dzn;
+
+interface IC {
+
+    out void basic_A_C();
+    out void basic_B_C();
+
+    in void basic_C_A();
+    in void basic_C_B();
+
+    behavior {
+        on basic_C_A, basic_C_B: basic_B_C;
+        on basic_C_A, basic_C_B: basic_A_C;
+    }
+
+}
+
+component C {
+
+    provides IC C_top;
+    requires IStep step;
+
+
+    behavior {
+        enum CurrentExecution {CMain, ABCallback};
+        subint State_AB_Callback{1..7};
+        subint State_Main{0..25};
+
+        CurrentExecution cur = CurrentExecution.CMain;
+        State_Main state_main = 1;
+        State_AB_Callback state_ab_callback = 1;
+
+        bool pubSelect = false;
+
+        on step.step(): {
+            [cur.CMain] {
+                [state_main < 24] state_main = state_main + 1;
+                // [s == 24] loop state
+                // [state_main == 25] main.exit();
+            }
+            [cur.ABCallback] {
+                [state_ab_callback == 1] state_ab_callback = 2;
+                // kontrol degiskeni hesaba katildi
+                [state_ab_callback == 2 && pubSelect]  state_ab_callback = 3;
+                [state_ab_callback == 2 && !pubSelect] state_ab_callback = 4;
+                [state_ab_callback == 3] { C_top.basic_A_C(); state_ab_callback = 5; }
+                [state_ab_callback == 4] { C_top.basic_B_C(); state_ab_callback = 5; }
+                [state_ab_callback == 5] state_ab_callback = 6;
+                [state_ab_callback == 6] { pubSelect = !pubSelect; state_ab_callback = 7; }
+                [state_ab_callback == 7] cur = CurrentExecution.CMain;
+            }
+        }
+        on C_top.basic_C_A(), C_top.basic_C_B(): {
+            [cur.CMain] {
+                cur = CurrentExecution.ABCallback;
+                state_ab_callback = 1;
+            }
+            [otherwise] {}
+        }
+    }
+}

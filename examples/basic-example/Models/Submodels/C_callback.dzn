@@ -1,14 +1,23 @@
-interface C_callback {
+interface IC_CB {
     in void step();
     out void exit();
 
-    subint State{1..2};
+    behavior {
+        on step: {}
+        on step: exit;
+    }
+}
+
+component C_CB {
+
+    provides IC_CB cb;
 
     behavior {
+        subint State{1..2};
         State s = 1;
-        on step: {
+        on cb.step(): {
             [s == 1] s = 2;
-            [s == 2] exit;
+            [s == 2] cb.exit();
         }
     }
 }

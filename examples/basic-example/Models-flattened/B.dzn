@@ -1,0 +1,77 @@
+import Utils/Step.dzn;
+
+interface IB {
+
+    out void basic_A_B();
+    out void basic_C_B();
+
+    in void basic_B_A();
+    in void basic_B_C();
+
+    behavior {
+        on basic_B_A: basic_A_B;
+        on basic_B_A: basic_C_B;
+        on basic_B_C: {}
+    }
+}
+
+component B {
+
+    provides IB B_top;
+    requires IStep step;
+
+    behavior {
+        enum CurrentExecution {BMain, ACallback, CCallback};
+        subint State_Main{0..26};
+        subint State_A_Callback{1..7};
+        subint State_C_Callback{1..2};
+
+        CurrentExecution cur = CurrentExecution.BMain;
+        State_Main state_main = 1;
+        State_A_Callback state_a_callback = 1;
+        State_C_Callback state_c_callback = 1;
+        
+        on step.step(): {
+            [cur.BMain]{
+                [state_main < 25] state_main = state_main + 1;
+                // [s == 25] loop state
+                // [state_main == 26] main.exit();
+            }
+            [cur.ACallback]{                
+                [state_a_callback < 3] state_a_callback = state_a_callback + 1;
+                // loop condition ignored here
+                [state_a_callback == 3] state_a_callback = 4;
+                [state_a_callback == 3] state_a_callback = 6;
+                /*
+                    Looplar uzerine bazi notlar:
+                        su anda model loop hic calismayabilir ya da
+                        sonsuza kadar calisabilir kosullarini da kabul ediyor
+                        daha iyi refine etmek icin kontrol degiskenini halletmek gerekecek
+                */
+                [state_a_callback == 4] { B_top.basic_C_B(); state_a_callback = 5; }
+                [state_a_callback == 5] state_a_callback = 3;
+                [state_a_callback == 6] {B_top.basic_A_B(); state_a_callback = 7;}
+                [state_a_callback == 7] cur = CurrentExecution.BMain;
+            }
+            [cur.CCallback]{
+                [state_c_callback == 1] state_c_callback = 2;
+                [state_c_callback == 2] cur = CurrentExecution.BMain;
+            }
+        }
+        on B_top.basic_B_A(): {
+            [cur.BMain] {
+                cur = CurrentExecution.ACallback;
+                state_a_callback = 1;
+            }
+            [otherwise] {}
+        }
+        on B_top.basic_B_C(): {
+            [cur.BMain] {
+                cur = CurrentExecution.CCallback;
+                state_c_callback = 1;
+            }
+            [otherwise] {}
+        }
+    }
+
+}

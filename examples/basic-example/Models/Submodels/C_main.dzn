@@ -1,16 +1,24 @@
-interface C_main {
-
+interface IC_MAIN {
     in void step();
     out void exit();
 
-    subint State{0..25};
+    behavior {
+        on step: {}
+        on step: exit;
+    }
+}
+
+component C_MAIN {
+
+    provides IC_MAIN main;
 
     behavior {
+        subint State{0..25};
         State s = 1;
-        on step: {
+        on main.step(): {
             [s < 24] s = s + 1;
             // [s == 24] loop state
-            [s == 25] exit;
+            [s == 25] main.exit();
         }
         /*
         on inevitable: {

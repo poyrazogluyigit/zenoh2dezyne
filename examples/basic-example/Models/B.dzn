@@ -11,15 +11,22 @@ interface IB {
     in void basic_B_A();
     in void basic_B_C();
 
+    behavior {
+        on basic_B_A: basic_A_B;
+        on basic_B_A: basic_C_B;
+        on basic_B_C: {}
+
+    }
+
 }
 
 component B {
 
     provides IB B_top;
-    provides B_main B_main;
-    provides A_callback A_callback;
-    provides C_callback C_callback;
-    requires Step step;
+    requires IB_MAIN B_main;
+    requires IA_CB A_callback;
+    requires IC_CB C_callback;
+    requires IStep step;
 
     behavior {
         enum CurrentExecution {BMain, ACallback, CCallback};

@@ -1,16 +1,24 @@
-interface B_main {
-
+interface IB_MAIN {
     in void step();
     out void exit();
 
-    subint State{0..26};
+    behavior {
+        on step: {}
+        on step: exit;
+    }
+}
+
+component B_MAIN {
+
+    provides IB_MAIN main;
 
     behavior {
+        subint State{0..26};
         State s = 1;
-        on step: {
+        on main.step(): {
             [s < 25] s = s + 1;
             // [s == 25] loop state
-            [s == 26] exit;
+            [s == 26] main.exit();
         }
         /*
         on inevitable: {

@@ -10,78 +10,53 @@ import Submodels/A_main.dzn;
 import Submodels/B_main.dzn;
 import Submodels/C_main.dzn;
 
-component A_cb {
-    provides A_callback cb;
-}
-
-component C_cb {
-    provides C_callback cb;
-}
-
-component AB_cb {
-    provides AB_callback cb;
-}
-
-component CStep {
-    provides Step step;
-}
-
-component CA_main {
-    provides A_main main;
-}
-
-component CB_main {
-    provides B_main main;
-}
-
-component CC_main {
-    provides C_main main;
-}
-
 component Top {
+
+    provides INetCtl net_ctl;
 
     system {
 
         // Network component
         Network net;
+        net_ctl <=> net.ctl;
 
         // Components of the system
-        A A_c;
-        B B_c;
-        C C_c;
+        A A_comp;
+        B B_comp;
+        C C_comp;
 
         // Steppers
-        CStep s1;
-        CStep s2;
-        CStep s3;
+        Step s1;
+        Step s2;
+        Step s3;
 
         // Component internals
-        CA_main a_m;
-        CB_main b_m;
-        CC_main c_m;
+        A_MAIN a_main;
+        B_MAIN b_main;
+        C_MAIN c_main;
 
-        A_cb a_c;
-        AB_cb ab_c;
-        C_cb c_c;
+        A_CB a_callback;
+        AB_CB ab_callback;
+        C_CB c_callback;
 
         // network binding
-        A_c.A_top <=> net.A;
-        B_c.B_top <=> net.B;
-        C_c.C_top <=> net.C;
+        A_comp.A_top <=> net.A;
+        B_comp.B_top <=> net.B;
+        C_comp.C_top <=> net.C;
 
         // Step function binding
-        A_c.step <=> s1.step;
-        B_c.step <=> s2.step;
-        C_c.step <=> s3.step;
+        A_comp.step <=> s1.step;
+        B_comp.step <=> s2.step;
+        C_comp.step <=> s3.step;
 
         // Component internals binding
-        A_c.main <=> a_m.main;
-        B_c.B_main <=> b_m.main;
-        C_c.C_main <=> c_m.main;
+        A_comp.main <=> a_main.main;
+        B_comp.B_main <=> b_main.main;
+        C_comp.C_main <=> c_main.main;
 
-        B_c.A_callback <=> a_c.cb;
-        B_c.C_callback <=> c_c.cb;
+        B_comp.A_callback <=> a_callback.cb;
+        B_comp.C_callback <=> c_callback.cb;
 
-        C_c.AB_callback <=> ab_c.cb;
+        C_comp.AB_callback <=> ab_callback.cb;
     }   
 }
