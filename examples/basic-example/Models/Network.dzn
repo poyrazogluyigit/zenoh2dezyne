@@ -1,0 +1,49 @@
+import A.dzn;
+import B.dzn;
+import C.dzn;
+
+
+component Network {
+
+    requires IA A;
+    requires IB B;
+    requires IC C;
+
+    behavior {
+        on A.basic_B_A(): B.basic_B_A();
+
+        // on B.basic_A_B(): 
+        on B.basic_C_B(): C.basic_C_B();
+
+        // on C.basic_A_C(): 
+        on C.basic_B_C(): B.basic_B_C();
+    }
+
+    /*
+    system {
+
+        // Components of the system
+        A A_c;
+        B B_c;
+        C C_c;
+
+        // Steppers
+        Step s1;
+        Step s2;
+        Step s3;
+
+        // Step function binding
+        A_c.step <=> s1;
+        B_c.step <=> s2;
+        C_c.step <=> s3;
+
+        // topic binding
+        B.basic_A_B <=> A.basic_A_B;
+        B.basic_C_B <=> C.basic_C_B;
+
+        C.basic_A_C <=> A.basic_A_C;
+        C.basic_B_C <=> B.basic_B_C;
+    }
+     */
+
+}

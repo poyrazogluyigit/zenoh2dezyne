@@ -2,7 +2,7 @@ import Utils/Step.dzn;
 import Submodels/C_main.dzn;
 import Submodels/AB_callback.dzn;
 
-component C {
+interface IC {
 
     out void basic_A_C();
     out void basic_B_C();
@@ -10,26 +10,30 @@ component C {
     in void basic_C_A();
     in void basic_C_B();
 
+}
+
+component C {
+
+    provides IC C;
     provides C_main C_main;
     provides AB_callback AB_callback;
     requires Step step;
 
 
-    enum CurrentExecution {CMain, ABCallback};
-
     behavior {
-        CurrentExecution cur = CMain;
-        [cur.BMain] {
+        enum CurrentExecution {CMain, ABCallback};
+        CurrentExecution cur = CurrentExecution.CMain;
+        [cur.CMain] {
             on step.step(): C_main.step();
-            on basic_C_A: cur = CurrentExecution.ABCallback;
-            on basic_C_B: cur = CurrentExecution.ABCallback;
+            on C.basic_C_A(): cur = CurrentExecution.ABCallback;
+            on C.basic_C_B(): cur = CurrentExecution.ABCallback;
 
         }
         [cur.ABCallback] {
-            on step.step(): A_callback.step();
-            on AB_callback.A_pub(): basic_A_C();
-            on A_callback.B_pub(): basic_B_C();
-            on A_callback.exit(): cur = CurrentExecution.CMain;
+            on step.step(): AB_callback.step();
+            on AB_callback.A_pub(): C.basic_A_C();
+            on AB_callback.B_pub(): C.basic_B_C();
+            on AB_callback.exit(): cur = CurrentExecution.CMain;
         }
     }
 

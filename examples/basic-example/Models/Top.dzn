@@ -1,22 +1,59 @@
 import A.dzn;
 import B.dzn;
 import C.dzn;
-
+import Utils/Step.dzn;
+import Network.dzn;
+import Submodels/A_callback.dzn;
+import Submodels/C_callback.dzn;
+import Submodels/AB_callback.dzn;
+import Submodels/A_main.dzn;
+import Submodels/B_main.dzn;
+import Submodels/C_main.dzn;
 
 component Top {
 
-    A A;
-    B B;
-    C C;
-
     system {
-        A.basic_B_A <=> B.basic_B_A;
-        
-        B.basic_A_B <=> A.basic_A_B;
-        B.basic_C_B <=> C.basic_C_B;
 
-        C.basic_A_C <=> A.basic_A_C;
-        C.basic_B_C <=> B.basic_B_C;
-    }
+        // Network component
+        Network net;
 
+        // Components of the system
+        A A_c;
+        B B_c;
+        C C_c;
+
+        // Steppers
+        Step s1;
+        Step s2;
+        Step s3;
+
+        // Component internals
+        A_main a_m;
+        B_main b_m;
+        C_main c_m;
+
+        A_callback a_c;
+        AB_callback ab_c;
+        C_callback c_c;
+
+        // network binding
+        A_c.A <=> net.A;
+        B_c.B <=> net.B;
+        C_c.C <=> net.C;
+
+        // Step function binding
+        A_c.step <=> s1;
+        B_c.step <=> s2;
+        C_c.step <=> s3;
+
+        // Component internals binding
+        A_c.main <=> a_m;
+        B_c.B_main <=> b_m;
+        C_c.C_main <=> c_m;
+
+        B_c.A_callback <=> a_c;
+        B_c.C_callback <=> c_c;
+
+        C_c.AB_callback <=> ab_c;
+    }   
 }

@@ -2,17 +2,19 @@ import Submodels/A_main.dzn;
 import Submodels/A_callback.dzn;
 import Utils/Step.dzn;
 
+interface IA {
+    out void basic_B_A();
+}
+
 component A {
 
-    out void basic_B_A();
-
+    provides IA A;
     provides A_main main;
     requires Step step;
 
     behavior {
-        on A_main.B_pub(): basic_B_A();
-        on step.step(): A_main.step();
+        on main.B_pub(): A.basic_B_A();
+        on step.step(): main.step();
     }
-
 
 }

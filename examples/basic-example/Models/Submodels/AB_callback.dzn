@@ -15,10 +15,10 @@ interface AB_callback {
         on step: {
             [s == 1] s = 2;
             // kontrol degiskeni hesaba katildi
-            [s = 2 && pubSelect] s = 3;
-            [s = 2 && !pubSelect] s = 4;
+            [s == 2 && pubSelect] s = 3;
+            [s == 2 && !pubSelect] s = 4;
             [s == 3] { A_pub; s = 5; }
-            [s == 4] { C_pub; s = 5; }
+            [s == 4] { B_pub; s = 5; }
             [s == 5] s = 6;
             [s == 6] { pubSelect = !pubSelect; s = 7; }
             [s == 7] exit();

@@ -10,7 +10,7 @@ interface A_callback {
     behavior {
         State s = 1;
         on step: {
-            [s < 3] i++;
+            [s < 3] s = s + 1;
             // loop condition ignored here
             [s == 3] s = 4;
             [s == 3] s = 6;
