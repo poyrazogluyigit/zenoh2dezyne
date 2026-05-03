@@ -14,7 +14,7 @@ interface IC {
 
 component C {
 
-    provides IC C;
+    provides IC C_top;
     provides C_main C_main;
     provides AB_callback AB_callback;
     requires Step step;
@@ -25,14 +25,14 @@ component C {
         CurrentExecution cur = CurrentExecution.CMain;
         [cur.CMain] {
             on step.step(): C_main.step();
-            on C.basic_C_A(): cur = CurrentExecution.ABCallback;
-            on C.basic_C_B(): cur = CurrentExecution.ABCallback;
+            on C_top.basic_C_A(): cur = CurrentExecution.ABCallback;
+            on C_top.basic_C_B(): cur = CurrentExecution.ABCallback;
 
         }
         [cur.ABCallback] {
             on step.step(): AB_callback.step();
-            on AB_callback.A_pub(): C.basic_A_C();
-            on AB_callback.B_pub(): C.basic_B_C();
+            on AB_callback.A_pub(): C_top.basic_A_C();
+            on AB_callback.B_pub(): C_top.basic_B_C();
             on AB_callback.exit(): cur = CurrentExecution.CMain;
         }
     }

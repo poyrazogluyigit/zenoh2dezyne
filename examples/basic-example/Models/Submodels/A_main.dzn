@@ -22,7 +22,7 @@ interface A_main {
             [s == 8] s = 9;
             [s == 9] s = 10;
             [s == 10] {
-                B_pub(); s = 9;
+                B_pub; s = 9;
             }
             /*
             [s == 10] {

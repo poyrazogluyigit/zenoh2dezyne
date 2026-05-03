@@ -1,0 +1,46 @@
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/A.dzn:5:5: error: event `basic_B_A' is not used in behavior of interface `IA'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/A.dzn:4:1: error: interface must define a behavior
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:8:5: error: event `basic_A_B' is not used in behavior of interface `IB'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:9:5: error: event `basic_C_B' is not used in behavior of interface `IB'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:11:5: error: event `basic_B_A' is not used in behavior of interface `IB'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:12:5: error: event `basic_B_C' is not used in behavior of interface `IB'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:6:1: error: interface must define a behavior
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:7:5: error: event `basic_A_C' is not used in behavior of interface `IC'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:8:5: error: event `basic_B_C' is not used in behavior of interface `IC'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:10:5: error: event `basic_C_A' is not used in behavior of interface `IC'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:11:5: error: event `basic_C_B' is not used in behavior of interface `IC'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:5:1: error: interface must define a behavior
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Network.dzn:6:1: error: component with behavior must define a provides port
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:79:9: error: type mismatch: cannot bind port `B_main' of type `B.B_main' to port main of type `B_main'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:19:5: info: port `B_main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:34:5: info: port `main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:80:9: error: type mismatch: cannot bind port `C_main' of type `C.C_main' to port main of type `C_main'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:18:5: info: port `C_main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:38:5: info: port `main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:82:9: error: type mismatch: cannot bind port `A_callback' of type `B.A_callback' to port cb of type `A_callback'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:20:5: info: port `A_callback' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:14:5: info: port `cb' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:83:9: error: type mismatch: cannot bind port `C_callback' of type `B.C_callback' to port cb of type `C_callback'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:21:5: info: port `C_callback' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:18:5: info: port `cb' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:85:9: error: type mismatch: cannot bind port `AB_callback' of type `C.AB_callback' to port cb of type `AB_callback'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:19:5: info: port `AB_callback' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:22:5: info: port `cb' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:78:9: error: cannot bind provides port `main' to provides port `main'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:30:5: info: port `main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/A.dzn:11:5: info: port `main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:79:9: error: cannot bind provides port `main' to provides port `B_main'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:34:5: info: port `main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:19:5: info: port `B_main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:80:9: error: cannot bind provides port `main' to provides port `C_main'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:38:5: info: port `main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:18:5: info: port `C_main' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:82:9: error: cannot bind provides port `cb' to provides port `A_callback'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:14:5: info: port `cb' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:20:5: info: port `A_callback' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:83:9: error: cannot bind provides port `cb' to provides port `C_callback'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:18:5: info: port `cb' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/B.dzn:21:5: info: port `C_callback' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:85:9: error: cannot bind provides port `cb' to provides port `AB_callback'
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/Top.dzn:22:5: info: port `cb' defined here
+/home/yigit/code/zenoh2dezyne/examples/basic-example/Models/C.dzn:19:5: info: port `AB_callback' defined here

@@ -1,5 +1,4 @@
 import Submodels/A_main.dzn;
-import Submodels/A_callback.dzn;
 import Utils/Step.dzn;
 
 interface IA {
@@ -8,12 +7,12 @@ interface IA {
 
 component A {
 
-    provides IA A;
+    provides IA A_top;
     provides A_main main;
     requires Step step;
 
     behavior {
-        on main.B_pub(): A.basic_B_A();
+        on main.B_pub(): A_top.basic_B_A();
         on step.step(): main.step();
     }
 

@@ -10,6 +10,34 @@ import Submodels/A_main.dzn;
 import Submodels/B_main.dzn;
 import Submodels/C_main.dzn;
 
+component A_cb {
+    provides A_callback cb;
+}
+
+component C_cb {
+    provides C_callback cb;
+}
+
+component AB_cb {
+    provides AB_callback cb;
+}
+
+component CStep {
+    provides Step step;
+}
+
+component CA_main {
+    provides A_main main;
+}
+
+component CB_main {
+    provides B_main main;
+}
+
+component CC_main {
+    provides C_main main;
+}
+
 component Top {
 
     system {
@@ -23,37 +51,37 @@ component Top {
         C C_c;
 
         // Steppers
-        Step s1;
-        Step s2;
-        Step s3;
+        CStep s1;
+        CStep s2;
+        CStep s3;
 
         // Component internals
-        A_main a_m;
-        B_main b_m;
-        C_main c_m;
+        CA_main a_m;
+        CB_main b_m;
+        CC_main c_m;
 
-        A_callback a_c;
-        AB_callback ab_c;
-        C_callback c_c;
+        A_cb a_c;
+        AB_cb ab_c;
+        C_cb c_c;
 
         // network binding
-        A_c.A <=> net.A;
-        B_c.B <=> net.B;
-        C_c.C <=> net.C;
+        A_c.A_top <=> net.A;
+        B_c.B_top <=> net.B;
+        C_c.C_top <=> net.C;
 
         // Step function binding
-        A_c.step <=> s1;
-        B_c.step <=> s2;
-        C_c.step <=> s3;
+        A_c.step <=> s1.step;
+        B_c.step <=> s2.step;
+        C_c.step <=> s3.step;
 
         // Component internals binding
-        A_c.main <=> a_m;
-        B_c.B_main <=> b_m;
-        C_c.C_main <=> c_m;
+        A_c.main <=> a_m.main;
+        B_c.B_main <=> b_m.main;
+        C_c.C_main <=> c_m.main;
 
-        B_c.A_callback <=> a_c;
-        B_c.C_callback <=> c_c;
+        B_c.A_callback <=> a_c.cb;
+        B_c.C_callback <=> c_c.cb;
 
-        C_c.AB_callback <=> ab_c;
+        C_c.AB_callback <=> ab_c.cb;
     }   
 }

@@ -21,7 +21,7 @@ interface AB_callback {
             [s == 4] { B_pub; s = 5; }
             [s == 5] s = 6;
             [s == 6] { pubSelect = !pubSelect; s = 7; }
-            [s == 7] exit();
+            [s == 7] exit;
         }
     }
 }

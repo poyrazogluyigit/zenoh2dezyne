@@ -6,8 +6,9 @@ interface C_callback {
 
     behavior {
         State s = 1;
-        on step:
+        on step: {
             [s == 1] s = 2;
             [s == 2] exit;
+        }
     }
 }

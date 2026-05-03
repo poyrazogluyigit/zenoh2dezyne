@@ -15,7 +15,7 @@ interface IB {
 
 component B {
 
-    provides IB B;
+    provides IB B_top;
     provides B_main B_main;
     provides A_callback A_callback;
     provides C_callback C_callback;
@@ -26,13 +26,13 @@ component B {
         CurrentExecution cur = CurrentExecution.BMain;
         [cur.BMain] {
             on step.step(): B_main.step();
-            on B.basic_B_A(): cur = CurrentExecution.ACallback;
-            on B.basic_B_C(): cur = CurrentExecution.CCallback;
+            on B_top.basic_B_A(): cur = CurrentExecution.ACallback;
+            on B_top.basic_B_C(): cur = CurrentExecution.CCallback;
         }
         [cur.ACallback] {
             on step.step(): A_callback.step();
-            on A_callback.A_pub(): B.basic_A_B();
-            on A_callback.C_pub(): B.basic_C_B();
+            on A_callback.A_pub(): B_top.basic_A_B();
+            on A_callback.C_pub(): B_top.basic_C_B();
             on A_callback.exit(): cur = CurrentExecution.BMain;
 
         }

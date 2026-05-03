@@ -10,7 +10,7 @@ interface C_main {
         on step: {
             [s < 24] s = s + 1;
             // [s == 24] loop state
-            [s == 25] exit();
+            [s == 25] exit;
         }
         /*
         on inevitable: {
