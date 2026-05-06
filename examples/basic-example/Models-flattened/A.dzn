@@ -1,24 +1,25 @@
 import Utils/Step.dzn;
 
 interface IA {
+    in void step();
     out void basic_B_A();
 
     behavior {
         on inevitable: basic_B_A;
+        on step: {}
     }
 }
 
 component A {
 
     provides IA A_top;
-    requires IStep step;
 
     behavior {
 
         subint State {1..11};
         State s = 1;
 
-        on step.step(): {
+        on A_top.step(): {
             [s == 1] s = 2;
             [s == 2] s = 3;
             [s == 3] s = 4;

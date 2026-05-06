@@ -14,25 +14,18 @@ component Top {
         Network net;
         net_ctl <=> net.ctl;
 
+        // Stepper component
+        Step step;
+        net.clk <=> step.step;
+
         // Components of the system
         A A_comp;
         B B_comp;
         C C_comp;
 
-        // Steppers
-        Step s1;
-        Step s2;
-        Step s3;
-
         // network binding
         A_comp.A_top <=> net.A;
         B_comp.B_top <=> net.B;
         C_comp.C_top <=> net.C;
-
-        // Step function binding
-        A_comp.step <=> s1.step;
-        B_comp.step <=> s2.step;
-        C_comp.step <=> s3.step;
-       
     }   
 }

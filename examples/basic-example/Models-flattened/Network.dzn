@@ -1,3 +1,4 @@
+import Utils/Step.dzn;
 import A.dzn;
 import B.dzn;
 import C.dzn;
@@ -11,12 +12,17 @@ component Network {
 
     provides INetCtl ctl;
 
+    requires IStep clk;
+
     requires IA A;
     requires IB B;
     requires IC C;
 
     behavior {
         on ctl.kick(): {}
+        on clk.step(): defer {
+            A.step(); B.step(); C.step();
+        }
         on A.basic_B_A(): B.basic_B_A();
         // on B.basic_A_B(): 
         on B.basic_C_B(): C.basic_C_B();

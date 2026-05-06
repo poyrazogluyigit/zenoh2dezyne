@@ -1,6 +1,7 @@
 import Utils/Step.dzn;
 
 interface IC {
+    in void step();
 
     out void basic_A_C();
     out void basic_B_C();
@@ -11,6 +12,7 @@ interface IC {
     behavior {
         on basic_C_A, basic_C_B: basic_B_C;
         on basic_C_A, basic_C_B: basic_A_C;
+        on step: {}
     }
 
 }
@@ -18,8 +20,6 @@ interface IC {
 component C {
 
     provides IC C_top;
-    requires IStep step;
-
 
     behavior {
         enum CurrentExecution {CMain, ABCallback};
@@ -32,7 +32,7 @@ component C {
 
         bool pubSelect = false;
 
-        on step.step(): {
+        on C_top.step(): {
             [cur.CMain] {
                 [state_main < 24] state_main = state_main + 1;
                 // [s == 24] loop state
