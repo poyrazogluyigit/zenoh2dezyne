@@ -9,10 +9,14 @@ interface IC {
     in void basic_C_B();
 
     behavior {
-        on basic_C_A, basic_C_B: basic_B_C;
-        on basic_C_A, basic_C_B: basic_A_C;
+        bool msg_AB = false;
+        on basic_C_A, basic_C_B: msg_AB = true;
+        [msg_AB] {
+            on inevitable: { basic_A_C; }
+            on inevitable: { basic_B_C; }
+            on inevitable: { msg_AB = false; }
+        }
     }
-
 }
 
 component C {
