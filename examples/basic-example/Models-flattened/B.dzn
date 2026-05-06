@@ -9,8 +9,15 @@ interface IB {
     in void basic_B_C();
 
     behavior {
-        on basic_B_A: basic_A_B;
-        on basic_B_A: basic_C_B;
+
+        bool msg_A = false;
+
+        on basic_B_A: msg_A = true;
+        [msg_A] {
+            on inevitable: { basic_C_B; }
+            on inevitable: { basic_A_B; }
+            on inevitable: { msg_A = false; }
+        }
         on basic_B_C: {}
     }
 }
