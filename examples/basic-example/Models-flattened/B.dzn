@@ -34,7 +34,7 @@ component B {
         on step.step(): {
             [cur.BMain]{
                 [state_main < 25] state_main = state_main + 1;
-                // [s == 25] loop state
+                [state_main == 25] {/* loop state */ }
                 // [state_main == 26] main.exit();
             }
             [cur.ACallback]{                
