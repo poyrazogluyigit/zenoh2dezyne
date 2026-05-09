@@ -1,0 +1,50 @@
+  VERIFY   A.dzn
+  VERIFY   B.dzn
+  VERIFY   C.dzn
+  VERIFY   Network.dzn
+error: illegal action performed in model Network
+model: Network
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.return
+s1.step
+A.step
+A.basic_B_A
+A.return
+B.basic_B_A
+B.return
+s2.step
+B.step
+B.return
+s2.step
+B.step
+B.return
+s2.step
+B.step
+B.ACallback_loop_not_taken
+B.return
+<illegal>

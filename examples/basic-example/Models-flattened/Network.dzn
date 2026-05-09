@@ -1,6 +1,7 @@
 import A.dzn;
 import B.dzn;
 import C.dzn;
+import Utils/Step.dzn;
 
 interface INetCtl {
     in void kick();
@@ -15,6 +16,10 @@ component Network {
     requires IB B;
     requires IC C;
 
+    requires IStep s1;
+    requires IStep s2;
+    requires IStep s3;
+
     behavior {
         on ctl.kick(): {}
         on A.basic_B_A(): B.basic_B_A();
@@ -22,5 +27,8 @@ component Network {
         on B.basic_C_B(): C.basic_C_B();
         // on C.basic_A_C(): 
         on C.basic_B_C(): B.basic_B_C();
+        on s1.step(): A.step();
+        on s2.step(): B.step();
+        on s3.step(): C.step();
     }
 }
