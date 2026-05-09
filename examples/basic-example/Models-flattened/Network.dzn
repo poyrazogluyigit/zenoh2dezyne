@@ -17,8 +17,6 @@ component Network {
     requires IC C;
 
     requires IStep s1;
-    requires IStep s2;
-    requires IStep s3;
 
     behavior {
         on ctl.kick(): {}
@@ -27,8 +25,10 @@ component Network {
         on B.basic_C_B(): C.basic_C_B();
         // on C.basic_A_C(): 
         on C.basic_B_C(): B.basic_B_C();
-        on s1.step(): A.step();
-        on s2.step(): B.step();
-        on s3.step(): C.step();
+        on s1.step(): {
+        A.step();
+        B.step();
+        C.step();
+        }
     }
 }

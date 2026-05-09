@@ -21,8 +21,6 @@ component Top {
 
         // Steppers
         Step s1;
-        Step s2;
-        Step s3;
 
         // network binding
         A_comp.A_top <=> net.A;
@@ -31,8 +29,6 @@ component Top {
 
         // Step function binding
         net.s1 <=> s1.step;
-        net.s2 <=> s2.step;
-        net.s3 <=> s3.step;
        
     }   
 }
