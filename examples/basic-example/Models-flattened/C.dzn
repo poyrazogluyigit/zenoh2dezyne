@@ -8,22 +8,7 @@ interface IC {
     in void basic_C_A();
     in void basic_C_B();
 
-    behavior {
-        bool msg_AB = false;
-        on basic_C_A, basic_C_B: msg_AB = true;
-        [msg_AB] {
-            on inevitable: { basic_A_C; }
-            on inevitable: { basic_B_C; }
-            on inevitable: { msg_AB = false; }
-        }
-    }
-}
-
-component C {
-
-    provides IC C_top;
-    requires IStep step;
-
+    in void step();
 
     behavior {
         enum CurrentExecution {CMain, ABCallback};
@@ -36,7 +21,7 @@ component C {
 
         bool pubSelect = false;
 
-        on step.step(): {
+        on step: {
             [cur.CMain] {
                 [state_main < 24] state_main = state_main + 1;
                 [state_main == 24] {/* loop state */}
@@ -44,17 +29,17 @@ component C {
             }
             [cur.ABCallback] {
                 [state_ab_callback == 1] state_ab_callback = 2;
-                // kontrol degiskeni hesaba katildi
+                // kontrol degiskeni hesaba katildi (no nondet)
                 [state_ab_callback == 2 && pubSelect]  state_ab_callback = 3;
                 [state_ab_callback == 2 && !pubSelect] state_ab_callback = 4;
-                [state_ab_callback == 3] { C_top.basic_A_C(); state_ab_callback = 5; }
-                [state_ab_callback == 4] { C_top.basic_B_C(); state_ab_callback = 5; }
+                [state_ab_callback == 3] { basic_A_C; state_ab_callback = 5; }
+                [state_ab_callback == 4] { basic_B_C; state_ab_callback = 5; }
                 [state_ab_callback == 5] state_ab_callback = 6;
                 [state_ab_callback == 6] { pubSelect = !pubSelect; state_ab_callback = 7; }
                 [state_ab_callback == 7] cur = CurrentExecution.CMain;
             }
         }
-        on C_top.basic_C_A(), C_top.basic_C_B(): {
+        on basic_C_A, basic_C_B: {
             [cur.CMain] {
                 cur = CurrentExecution.ABCallback;
                 state_ab_callback = 1;
@@ -62,4 +47,8 @@ component C {
             [otherwise] {}
         }
     }
+}
+
+component CC {
+    provides IC C_top;
 }

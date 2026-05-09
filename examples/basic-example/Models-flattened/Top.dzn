@@ -15,9 +15,9 @@ component Top {
         net_ctl <=> net.ctl;
 
         // Components of the system
-        A A_comp;
-        B B_comp;
-        C C_comp;
+        CA A_comp;
+        CB B_comp;
+        CC C_comp;
 
         // Steppers
         Step s1;
@@ -30,9 +30,9 @@ component Top {
         C_comp.C_top <=> net.C;
 
         // Step function binding
-        A_comp.step <=> s1.step;
-        B_comp.step <=> s2.step;
-        C_comp.step <=> s3.step;
+        net.s1 <=> s1.step;
+        net.s2 <=> s2.step;
+        net.s3 <=> s3.step;
        
     }   
 }
