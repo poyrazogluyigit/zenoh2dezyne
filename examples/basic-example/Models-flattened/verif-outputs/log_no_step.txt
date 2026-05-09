@@ -1,0 +1,23 @@
+A.dzn:8:5: error: event `switch_state_to' is not used in behavior of interface `IA'
+A.dzn:8:5: error: out-event `switch_state_to' must be void, found `IA.State'
+A.dzn:8:31: error: type mismatch: parameter `state'; expected extern, found: `IA.State'
+A.dzn:15:31: error: undefined function call: "switch_state_to"
+A.dzn:15:31: error: call value discarded
+A.dzn:16:31: error: undefined function call: "switch_state_to"
+A.dzn:16:31: error: call value discarded
+A.dzn:17:31: error: undefined function call: "switch_state_to"
+A.dzn:17:31: error: call value discarded
+A.dzn:18:31: error: undefined function call: "switch_state_to"
+A.dzn:18:31: error: call value discarded
+A.dzn:19:31: error: undefined function call: "switch_state_to"
+A.dzn:19:31: error: call value discarded
+A.dzn:20:31: error: undefined function call: "switch_state_to"
+A.dzn:20:31: error: call value discarded
+A.dzn:21:31: error: undefined function call: "switch_state_to"
+A.dzn:21:31: error: call value discarded
+A.dzn:22:31: error: undefined function call: "switch_state_to"
+A.dzn:22:31: error: call value discarded
+A.dzn:23:31: error: undefined function call: "switch_state_to"
+A.dzn:23:31: error: call value discarded
+A.dzn:25:35: error: undefined function call: "switch_state_to"
+A.dzn:25:35: error: call value discarded

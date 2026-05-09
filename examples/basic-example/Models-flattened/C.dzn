@@ -8,8 +8,6 @@ interface IC {
     in void basic_C_A();
     in void basic_C_B();
 
-    in void step();
-
     behavior {
         enum CurrentExecution {CMain, ABCallback};
         subint State_AB_Callback{1..7};
@@ -21,7 +19,7 @@ interface IC {
 
         bool pubSelect = false;
 
-        on step: {
+        on inevitable: {
             [cur.CMain] {
                 [state_main < 24] state_main = state_main + 1;
                 [state_main == 24] {/* loop state */}

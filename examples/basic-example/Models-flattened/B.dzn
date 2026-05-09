@@ -8,8 +8,6 @@ interface IB {
     in void basic_B_A();
     in void basic_B_C();
 
-    in void step();
-
     out void ACallback_loop_taken();
     out void ACallback_loop_not_taken();
 
@@ -24,7 +22,7 @@ interface IB {
         State_A_Callback state_a_callback = 1;
         State_C_Callback state_c_callback = 1;
         
-        on step: {
+        on inevitable: {
             [cur.BMain]{
                 [state_main < 25] state_main = state_main + 1;
                 [state_main == 25] {/* loop state */ }

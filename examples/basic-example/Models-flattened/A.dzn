@@ -3,25 +3,26 @@ import Utils/Step.dzn;
 interface IA {
 
     out void basic_B_A();
-    in void step();
+
+    subint State {1..11};
+    out State switch_state_to(in State state);
 
     behavior {
 
-        subint State {1..11};
         State s = 1;
 
-        on step: {
-            [s == 1] s = 2;
-            [s == 2] s = 3;
-            [s == 3] s = 4;
-            [s == 4] s = 5;
-            [s == 5] s = 6;
-            [s == 6] s = 7;
-            [s == 7] s = 8;
-            [s == 8] s = 9;
-            [s == 9] s = 10;
+        on inevitable: {
+            [s == 1] {s = 2;  switch_state_to(2); }
+            [s == 2] {s = 3;  switch_state_to(3); }
+            [s == 3] {s = 4;  switch_state_to(4); }
+            [s == 4] {s = 5;  switch_state_to(5); }
+            [s == 5] {s = 6;  switch_state_to(6); }
+            [s == 6] {s = 7;  switch_state_to(7); }
+            [s == 7] {s = 8;  switch_state_to(8); }
+            [s == 8] {s = 9;  switch_state_to(9); }
+            [s == 9] {s = 10; switch_state_to(10); }
             [s == 10] {
-                basic_B_A; s = 9;
+                basic_B_A; s = 9; switch_state_to(9);
             }
             /*
             [s == 10] {
