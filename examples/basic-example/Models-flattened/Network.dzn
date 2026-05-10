@@ -30,5 +30,6 @@ component Network {
         B.step();
         C.step();
         }
+        on B.ACallback_loop_taken(), B.ACallback_loop_not_taken(): {}
     }
 }
