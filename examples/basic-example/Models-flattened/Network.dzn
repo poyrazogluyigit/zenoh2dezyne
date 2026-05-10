@@ -21,9 +21,9 @@ component Network {
     behavior {
         on ctl.kick(): {}
         on A.basic_B_A(): B.basic_B_A();
-        // on B.basic_A_B(): 
+        on B.basic_A_B(): {}
         on B.basic_C_B(): C.basic_C_B();
-        // on C.basic_A_C(): 
+        on C.basic_A_C(): {}
         on C.basic_B_C(): B.basic_B_C();
         on s1.step(): {
         A.step();

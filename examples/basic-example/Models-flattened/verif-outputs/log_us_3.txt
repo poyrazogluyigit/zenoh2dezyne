@@ -1,0 +1,5 @@
+  VERIFY   A.dzn
+  VERIFY   B.dzn
+  VERIFY   C.dzn
+  VERIFY   Network.dzn
+  VERIFY   Top.dzn
