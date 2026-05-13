@@ -4,25 +4,34 @@ interface IA {
 
     out void basic_B_A();
 
-    subint State {1..11};
-    out State switch_state_to(in State state);
+    // out void goto_state_1();
+    out void goto_state_2();
+    out void goto_state_3();
+    out void goto_state_4();
+    out void goto_state_5();
+    out void goto_state_6();
+    out void goto_state_7();
+    out void goto_state_8();
+    out void goto_state_9();
+    out void goto_state_10();
 
     behavior {
 
+        subint State {1..11};
         State s = 1;
 
         on inevitable: {
-            [s == 1] {s = 2;  switch_state_to(2); }
-            [s == 2] {s = 3;  switch_state_to(3); }
-            [s == 3] {s = 4;  switch_state_to(4); }
-            [s == 4] {s = 5;  switch_state_to(5); }
-            [s == 5] {s = 6;  switch_state_to(6); }
-            [s == 6] {s = 7;  switch_state_to(7); }
-            [s == 7] {s = 8;  switch_state_to(8); }
-            [s == 8] {s = 9;  switch_state_to(9); }
-            [s == 9] {s = 10; switch_state_to(10); }
+            [s == 1] {s = 2;  goto_state_2; }
+            [s == 2] {s = 3;  goto_state_3; }
+            [s == 3] {s = 4;  goto_state_4; }
+            [s == 4] {s = 5;  goto_state_5; }
+            [s == 5] {s = 6;  goto_state_6; }
+            [s == 6] {s = 7;  goto_state_7; }
+            [s == 7] {s = 8;  goto_state_8; }
+            [s == 8] {s = 9;  goto_state_9; }
+            [s == 9] {s = 10; goto_state_10; }
             [s == 10] {
-                basic_B_A; s = 9; switch_state_to(9);
+                basic_B_A; s = 9; goto_state_9;
             }
             /*
             [s == 10] {

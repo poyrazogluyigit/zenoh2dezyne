@@ -8,23 +8,27 @@ cpg.file.name.filterNot(_.contains("joern_includes")).label
 cpg.call.name("declare_subscriber").map { subCall =>
   val topic = subCall.argument(1).code
   val cbArgCode = subCall.argument(2).code
-  
-  // Clean up the variable name (e.g., from "&A_callback" to "A_callback")
   val cbVarName = cbArgCode.replace("&", "").trim
 
-  // Find the assignment where LHS is this variable, get its RHS, 
-  // extract the MethodRef, trace it to the Method, and generate the CFG.
-  val resolvedGraph = cpg.assignment
-    .where(_.argument(1).codeExact(cbVarName))
-    .argument(2)
-    .ast.isMethodRef
-    .referencedMethod
-    .dotCfg
-    .l
-  
+  val resolvedGraph =
+    {
+      val directCfg = cpg.method.name(cbVarName).dotCfg.l
+      if (directCfg.nonEmpty) {
+        directCfg
+      } else {
+        cpg.assignment
+          .where(_.argument(1).codeExact(cbVarName))
+          .argument(2)
+          .ast.isMethodRef
+          .referencedMethod
+          .dotCfg
+          .l
+      }
+    }
+
   Map(
-    "topic"     -> topic,
-    "callback"  -> cbVarName,
-    "dotGraph"  -> resolvedGraph.headOption.getOrElse("CFG resolution failed")
+    "topic" -> topic,
+    "callback" -> cbVarName,
+    "dotGraph" -> resolvedGraph.headOption.getOrElse("CFG resolution failed")
   )
 }.toJsonPretty
