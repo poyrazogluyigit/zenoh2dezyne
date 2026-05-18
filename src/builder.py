@@ -1,5 +1,5 @@
 import logging
-from querier import Querier
+from frontend.querier import Querier
 from containers import *
 
 logger = logging.getLogger(__name__)
