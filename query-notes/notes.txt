@@ -28,6 +28,7 @@ cpg.call.name("declare_subscriber").map { subCall =>
       .where(_.argument(1).codeExact(cbVarName))
       .argument(2)
       .ast.isMethodRef
+      .filter(_.refOut.nonEmpty)
       .referencedMethod
       .dotCfg
       .l
@@ -39,4 +40,4 @@ cpg.call.name("declare_subscriber").map { subCall =>
     "callback"  -> cbVarName,
     "dotGraph"  -> resolvedGraph.headOption.getOrElse("CFG resolution failed")
   )
-}.toJsonPretty
+}.toJson

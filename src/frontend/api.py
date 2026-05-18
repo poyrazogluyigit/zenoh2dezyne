@@ -163,46 +163,52 @@ class JoernQueryAPI:
         }'''
 
     @_json_query_decorator
-    def get_callback_control_flows(self, file_name: str, callback_name: str) -> list[dict]:
-        """Get control flow information for a callback's put() statements.
-        
-        For each put() call in the specified callback, retrieves:
-        - The keyExpr of the publisher being published to
-        - The control flow statements (if/else) wrapping the put call
-        
-        Note: May not correctly handle session.put() calls.
-        
-        Args:
-            file_name: Name of the file containing the callback
-            callback_name: Name of the callback function
-            
-        Returns:
-            List of dicts with keys 'keyExpr' and 'controlFlow'
-        """
-        return f'''cpg.method("{callback_name}").call.name("put").map {{ v =>
-        val recvName = v.receiver.isIdentifier.name.headOption.getOrElse("")
-        val fname    = "{file_name}"
-        
-        val keyExpr = cpg.call
-            .name("declare_publisher")
-            .where(_.file.nameExact(fname))
-            .where(_.inAssignment.argument(1).isIdentifier.nameExact(recvName))
-            .argument(1)
-            .code
-            .headOption
-            .getOrElse("")
-        
-        val controlFlow =
-            v.inAst.isControlStructure
-            .map(cs => (cs.controlStructureType, cs.condition.code.headOption.getOrElse("")))
+    def get_callback_control_flows(self) -> list[dict]:
+        return """cpg.call.name("declare_subscriber").map { subCall =>
+        val topic = subCall.argument(1).code
+        val cbArgCode = subCall.argument(2).code
+      
+        // Clean up the variable name (e.g., from "&A_callback" to "A_callback")
+        val cbVarName = cbArgCode.replace("&", "").trim
+      
+        // Find the function with the name equal to cbVarName and get its dotCfg
+        // If there is no dotCfg, find the assignment where LHS is this variable, get its RHS, 
+        // extract the MethodRef, trace it to the Method, and generate the CFG.
+      
+        val resolvedGraph = 
+        {
+          val directCfg = cpg.method
+          .name(cbVarName)
+          .dotCfg
+          .l
+          if (directCfg.nonEmpty) directCfg
+          else {
+            cpg.assignment
+            .where(_.argument(1).codeExact(cbVarName))
+            .argument(2)
+            .ast.isMethodRef
+            .filter(_.refOut.nonEmpty)
+            .referencedMethod
+            .dotCfg
             .l
-        
-        Map(
-            "keyExpr"     -> keyExpr,
-            "controlFlow" -> controlFlow
-        )
-        }}
-        '''
+          }
+        }
+      
+                Map(
+                    "topic"     -> topic,
+                    "callback"  -> cbVarName,
+                    "dotGraph"  -> resolvedGraph.headOption.getOrElse("CFG resolution failed")
+                )
+            }"""
+    
+    @_json_query_decorator
+    def get_main_control_flows(self) -> list[dict]:
+                return """cpg.method.name("main")
+                .map(m => Map(
+                    "file"   -> m.file.name.headOption.getOrElse("unknown"),
+                    "dotCfg" -> m.dotCfg.headOption.getOrElse("CFG resolution failed")
+                ))
+                """
     
     def close(self) -> None:
         """Close the connection to Joern server.
