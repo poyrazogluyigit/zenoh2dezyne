@@ -33,14 +33,23 @@ class ControlFlowGraph:
 
 
 @dataclass
-class CallbackCFG:
+class CallbackNode:
     file_name: str
     callback: str
     key_expr: str
     cfg: ControlFlowGraph
+    callback_full_name: Optional[str] = None
 
 
 @dataclass
 class MainCFG:
     file_name: str
     cfg: ControlFlowGraph
+    main_full_name: Optional[str] = None
+
+
+@dataclass
+class TranslationUnit:
+    main_cfg: MainCFG
+    callback_cfgs: list[CallbackNode] = field(default_factory=list)
+    called_method_fullnames: list[str] = field(default_factory=list)

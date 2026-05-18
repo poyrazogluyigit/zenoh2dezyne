@@ -23,18 +23,7 @@ class Builder:
         self.data = {}
         self.callback_cfgs = []
         self.main_cfgs = []
-
-    def _build_cfg(self, dot: str) -> ControlFlowGraph:
-        graph, error = parse_dot_to_graph(dot)
-        node_count = graph.number_of_nodes() if graph else 0
-        edge_count = graph.number_of_edges() if graph else 0
-        return ControlFlowGraph(
-            dot=dot,
-            graph=graph,
-            node_count=node_count,
-            edge_count=edge_count,
-            parse_error=error,
-        )
+        self.translation_units = []
 
     def populatePublishers(self):
         """Query and populate publisher information into units."""
@@ -60,40 +49,74 @@ class Builder:
                 unit.subscribers = [Subscriber(expr['keyExpr'], expr['callback']) for expr in keyExprs]
                 self.data[fileName] = unit
 
-    def populateCallbackCFGs(self):
-        """Query and parse callback CFGs into graph objects."""
-        self.callback_cfgs = []
-        subscriber_index = {}
-        for unit in self.data.values():
-            for subscriber in unit.subscribers:
-                subscriber_index[(subscriber.callback, subscriber.keyExpr)] = unit.filename
-
-        callback_cfgs = self.api.get_callback_control_flows()
-        for item in callback_cfgs:
-            key_expr = item.get("topic", item.get("keyExpr", ""))
-            callback = item.get("callback", "")
-            dot_graph = item.get("dotGraph", "")
-            file_name = subscriber_index.get((callback, key_expr), "unknown")
-            cfg = self._build_cfg(dot_graph)
-            self.callback_cfgs.append(
-                CallbackCFG(
-                    file_name=file_name,
-                    callback=callback,
-                    key_expr=key_expr,
-                    cfg=cfg,
-                )
-            )
-
-    def populateMainCFGs(self):
-        """Query and parse main() CFGs into graph objects."""
-        self.main_cfgs = []
-        main_cfgs = self.api.get_main_control_flows()
-        for item in main_cfgs:
-            file_name = item.get("file", "unknown")
-            dot_graph = item.get("dotCfg", "")
-            cfg = self._build_cfg(dot_graph)
-            self.main_cfgs.append(MainCFG(file_name=file_name, cfg=cfg))
+    def _build_cfg(self, dot: str) -> ControlFlowGraph:
+        graph, error = parse_dot_to_graph(dot)
+        if error is not None:
+            logger.error(error)
+            exit(1)
+        node_count = graph.number_of_nodes()
+        edge_count = graph.number_of_edges()
+        return ControlFlowGraph(
+            dot=dot,
+            graph=graph,
+            node_count=node_count,
+            edge_count=edge_count,
+            parse_error=error,
+        )
     
+    def getSourceFiles(self) -> list[str]:
+        return self.api.getFiles()
+    
+    def getMainCFG(self, file_name: str) -> ControlFlowGraph:
+        main = self.api.getCFGAsDot(file_name, "main")[0]
+        logger.debug(f"Retrieved main CFG from {file_name}: {main}")
+        return self._build_cfg(main)
+    
+
+
+    def getSubscriberInfo(self, file_name: str) -> list[CallbackNode]:
+        '''Returns a list of CallbackNodes in a given file name.'''
+        subscriberData = self.api.get_callback_control_flows(file_name)
+        callbackNodes = []
+        for data in subscriberData:
+            topic, callback, dotGraph = data['topic'], data['callback'], data['dotGraph']
+            callbackNodes.append(CallbackNode(
+                file_name,
+                callback,
+                topic,
+                self._build_cfg(dotGraph)
+            ))
+        return callbackNodes
+    
+
+    
+    '''
+    0. Projedeki butun isimli dosyalari bul
+    Her dosya icin:
+        1. O dosyadaki subscriberlari bul
+        2. Bu subscriberlarin callback fonksiyonlarinin CFGlerini ve keyexprlarini dondur
+            1 ve 2 tek bir query olarak donuyor
+        3. Bu dosyanin main CFGsini dondur
+        4. Bu dosyadaki publishable'lari bul
+            declare_publisher degiskenleri ve session degiskeni/degiskenleri
+        5. Her CFG'yi publishablelara gore prunela
+            control flow nodelari kalacak
+            put nodelari kalacak
+            bir tam ifadenin subnodelari gidecek
+        6. Son CFG'leri TranslationUnit icerisinde bir araya getir
+    '''
+    def buildTranslationUnitStructs(self):
+        self.translation_units = []
+        for filename in self.getSourceFiles():
+            subs = self.getSubscriberInfo(filename)
+            mainCFG = self.getMainCFG(filename)
+            self.translation_units.append(
+                TranslationUnit(
+                    main_cfg=mainCFG,
+                    callback_cfgs=subs, 
+                    called_method_fullnames=None
+                ))
+
     def buildDict(self, project_name: str):
         """Build the unit dictionary by querying Joern for the given project.
         
@@ -105,14 +128,15 @@ class Builder:
         """
         logger.debug(f"Starting Joern analysis for project '{project_name}'")
         self.api.open_project(project_name)
+        # self.api.import_code(input_path=project_name, project_name="basic-example-2")
         
         logger.debug("Retrieving publisher/subscriber information from Joern")
         self.populatePublishers()
         self.populateSubscribers()
-        self.populateCallbackCFGs()
-        self.populateMainCFGs()
+        self.buildTranslationUnitStructs()
         
         logger.debug("Joern analysis complete, returning unit data")
+        print(self.translation_units)
         return self.data
     
 if __name__ == "__main__":

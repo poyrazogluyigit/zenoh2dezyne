@@ -15,7 +15,7 @@ from ._connection import Connection
 logger = logging.getLogger(__name__)
 
 
-def parse_joern_json(response: str) -> object:
+def _parse_joern_json(response: str) -> object:
     """Parse Joern's JSON response, stripping ANSI codes and extracting JSON.
     
     Args:
@@ -27,8 +27,8 @@ def parse_joern_json(response: str) -> object:
     Raises:
         ValueError: If response cannot be parsed as valid JSON
     """
-    clean_resp = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', response)
-    rhs = clean_resp.split("=", 1)[-1].strip() if "=" in clean_resp else clean_resp.strip()
+    rhs = _clean_joern_repl(response)
+    logger.debug(f"Cleaning json: {rhs}")
 
     if rhs.startswith('"""') and rhs.endswith('"""'):
         rhs = rhs[3:-3].strip()
@@ -40,9 +40,18 @@ def parse_joern_json(response: str) -> object:
         rhs = match.group(1)
 
     try:
-        return json.loads(rhs)
+        clean = json.loads(rhs)
+        logger.debug(f"Cleaned json: {clean}")
+        return clean
     except json.JSONDecodeError as exc:
         raise ValueError(f"Failed to parse Joern JSON: {exc}") from exc
+    
+def _clean_joern_repl(response: str) -> str:
+    logger.debug(f"Cleaning repl: {response}")
+    clean_resp = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', response)
+    rhs = clean_resp.split("=", 1)[-1].strip() if "=" in clean_resp else clean_resp.strip()
+    logger.debug(f"Cleaned: {rhs}")
+    return rhs
 
 
 class JoernQueryAPI:
@@ -109,7 +118,7 @@ class JoernQueryAPI:
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
             query_res = self._send_query(result + ".toJson")
-            return parse_joern_json(query_res)
+            return _parse_joern_json(query_res)
         return wrapper
 
     @_query_decorator
@@ -124,6 +133,11 @@ class JoernQueryAPI:
         """
         logger.debug(f"Opening Joern project: {project_name}")
         return f'open("{project_name}")'
+    
+    @_query_decorator
+    def import_code(self, input_path: str, project_name: str):
+        logger.debug(f"Importing code from {input_path}")
+        return f'importCode(inputPath="{input_path}", projectName="{project_name}")'
     
     @_json_query_decorator
     def get_publishers(self) -> list[dict]:
@@ -161,10 +175,25 @@ class JoernQueryAPI:
         "callback" -> c.argument(2).code
         ))
         }'''
+    
+    @_json_query_decorator
+    def get_puttables(self) -> list[dict]:
+        ...
+    
+    def get_put_stmts(self):
+        ...
 
     @_json_query_decorator
-    def get_callback_control_flows(self) -> list[dict]:
-        return """cpg.call.name("declare_subscriber").map { subCall =>
+    def getCFGAsDot(self, file_name: str, function_name: str):
+        return f"cpg.method.filename(\"{file_name}\").name(\"{function_name}\").dotCfg"
+
+    @_json_query_decorator
+    def getFiles(self):
+        return "cpg.file.name(\".*\\\\.cpp\").map(_.name)"
+
+    @_json_query_decorator
+    def get_callback_control_flows(self, file_name: str) -> list[dict]:
+        return f"""cpg.call("declare_subscriber").where(_.file.name("{file_name}")).map {{ subCall =>
         val topic = subCall.argument(1).code
         val cbArgCode = subCall.argument(2).code
       
@@ -175,40 +204,58 @@ class JoernQueryAPI:
         // If there is no dotCfg, find the assignment where LHS is this variable, get its RHS, 
         // extract the MethodRef, trace it to the Method, and generate the CFG.
       
-        val resolvedGraph = 
-        {
-          val directCfg = cpg.method
-          .name(cbVarName)
-          .dotCfg
-          .l
-          if (directCfg.nonEmpty) directCfg
-          else {
-            cpg.assignment
-            .where(_.argument(1).codeExact(cbVarName))
-            .argument(2)
-            .ast.isMethodRef
-            .filter(_.refOut.nonEmpty)
-            .referencedMethod
-            .dotCfg
-            .l
-          }
-        }
+                val resolvedMethods = {{
+                    val directMethods = cpg.method.name(cbVarName).l
+                    if (directMethods.nonEmpty) directMethods
+                    else {{
+                        cpg.assignment
+                        .where(_.argument(1).codeExact(cbVarName))
+                        .argument(2)
+                        .ast.isMethodRef
+                        .filter(_.refOut.nonEmpty)
+                        .referencedMethod
+                        .l
+                    }}
+                }}
+
+                val resolved = resolvedMethods.headOption
+                val callbackFullName = resolved.map(_.fullName).getOrElse(cbVarName)
+                val dotGraph = resolved
+                    .map(_.dotCfg.headOption.getOrElse("CFG resolution failed"))
+                    .getOrElse("CFG resolution failed")
       
                 Map(
-                    "topic"     -> topic,
-                    "callback"  -> cbVarName,
-                    "dotGraph"  -> resolvedGraph.headOption.getOrElse("CFG resolution failed")
+                        "topic"     -> topic,
+                        "callback"  -> cbVarName,
+                        "dotGraph"  -> dotGraph
                 )
-            }"""
+            }}"""
     
     @_json_query_decorator
     def get_main_control_flows(self) -> list[dict]:
-                return """cpg.method.name("main")
-                .map(m => Map(
-                    "file"   -> m.file.name.headOption.getOrElse("unknown"),
-                    "dotCfg" -> m.dotCfg.headOption.getOrElse("CFG resolution failed")
-                ))
-                """
+        return """cpg.method.name("main")
+        .map(m => Map(
+            "file"   -> m.file.name.headOption.getOrElse("unknown"),
+            "mainFullName" -> m.fullName,
+            "dotCfg" -> m.dotCfg.headOption.getOrElse("CFG resolution failed")
+        ))
+        """
+
+    @_json_query_decorator
+    def get_main_called_methods(self) -> list[dict]:
+        return """cpg.method.name("main").map { m =>
+        val calledMethods = m.call.callee
+            .repeat(_.call.callee)(_.emit)
+            .filterNot(_.isExternal)
+            .fullName
+            .l
+            .distinct
+        Map(
+            "file" -> m.file.name.headOption.getOrElse("unknown"),
+            "mainFullName" -> m.fullName,
+            "calledMethods" -> calledMethods
+        )
+      }"""
     
     def close(self) -> None:
         """Close the connection to Joern server.
