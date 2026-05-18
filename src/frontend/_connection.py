@@ -1,3 +1,7 @@
+"""Private internal module for Joern server connection management.
+
+This module is not part of the public API. Use frontend._lifecycle.JoernConnection instead.
+"""
 import logging
 from subprocess import Popen, PIPE
 import requests
@@ -6,7 +10,12 @@ import atexit
 
 logger = logging.getLogger(__name__)
 
+
 class Connection:
+    """Low-level Joern HTTP connection manager.
+    
+    This class is private and subject to change. Use JoernConnection from _lifecycle instead.
+    """
     def __init__(self, joern_server: str = ""):
         self.proc = None
         self.joern_server = joern_server
