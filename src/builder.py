@@ -65,10 +65,10 @@ class Builder:
         )
     
     def getSourceFiles(self) -> list[str]:
-        return self.api.getFiles()
+        return self.api.get_files()
     
     def getMainCFG(self, file_name: str) -> ControlFlowGraph:
-        main = self.api.getCFGAsDot(file_name, "main")[0]
+        main = self.api.get_cfg_as_dot(file_name, "main")[0]
         logger.debug(f"Retrieved main CFG from {file_name}: {main}")
         return self._build_cfg(main)
     
@@ -88,6 +88,19 @@ class Builder:
             ))
         return callbackNodes
     
+    def getPublishers(self, file_name: str) -> list[VarPublisher]:
+        return [
+            VarPublisher(key, value) 
+            for item in self.api.get_var_publishers(file_name) 
+            for key, value in item.items()
+        ]
+    
+    def getSessionPuts(self, file_name: str) -> list[SessPublisher]:
+        return [
+            SessPublisher(key, value) 
+            for item in self.api.get_session_variables(file_name) 
+            for key, value in item.items()
+        ]
 
     
     '''
@@ -98,7 +111,8 @@ class Builder:
             1 ve 2 tek bir query olarak donuyor
         3. Bu dosyanin main CFGsini dondur
         4. Bu dosyadaki publishable'lari bul
-            declare_publisher degiskenleri ve session degiskeni/degiskenleri
+            4.1 bu dosyadaki publisher'lari (degisken, topic) olarak dondur
+            4.2 bu dosyadaki session degiskenlerini (degisken, [topic list]) olarak dondur
         5. Her CFG'yi publishablelara gore prunela
             control flow nodelari kalacak
             put nodelari kalacak
@@ -110,10 +124,14 @@ class Builder:
         for filename in self.getSourceFiles():
             subs = self.getSubscriberInfo(filename)
             mainCFG = self.getMainCFG(filename)
+            pubVars = self.getPublishers(filename)
+            sessionPubs = self.getSessionPuts(filename)
             self.translation_units.append(
                 TranslationUnit(
                     main_cfg=mainCFG,
                     callback_cfgs=subs, 
+                    var_publishers=pubVars,
+                    sess_publishers=sessionPubs,
                     called_method_fullnames=None
                 ))
 

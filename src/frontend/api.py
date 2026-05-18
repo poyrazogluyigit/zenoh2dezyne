@@ -92,22 +92,9 @@ class JoernQueryAPI:
         """
         return self._connection.sendQuery(query)
 
-    @staticmethod
-    def _query_decorator(func):
-        """Decorator for executing a raw Joern query.
-        
-        Decorated function should return a Joern query string.
-        The decorator executes the query and returns the raw response.
-        """
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            result = func(self, *args, **kwargs)
-            query_res = self._send_query(result + "")
-            return query_res
-        return wrapper
     
     @staticmethod
-    def _json_query_decorator(func):
+    def _query_decorator(func):
         """Decorator for executing a Joern query that returns JSON.
         
         Decorated function should return a Joern query string.
@@ -139,7 +126,26 @@ class JoernQueryAPI:
         logger.debug(f"Importing code from {input_path}")
         return f'importCode(inputPath="{input_path}", projectName="{project_name}")'
     
-    @_json_query_decorator
+    @_query_decorator
+    def get_var_publishers(self, file_name: str) -> list[dict]:
+        """Get (variable name, topic) info for all publishers in a file."""
+        return f'''cpg.call.name("declare_publisher")
+        .where(_.file.name("{file_name}"))
+        .map {{ c => 
+        (c.inAssignment.target.code.head, c.argument(1).code) 
+        }}'''
+    
+    @_query_decorator
+    def get_session_variables(self, file_name: str):
+        return f'''cpg.call.code(".*zenoh::Session::open\\\\(.*")
+        .where(_.file.name("{file_name}"))
+        .inAssignment.target.code.map {{ 
+            sessionVar =>
+            val putArgs = cpg.call.name("put").where(_.argument(0).codeExact(sessionVar)).argument(1).code.l
+            (sessionVar, putArgs)
+        }}.toMap'''
+    
+    @_query_decorator
     def get_publishers(self) -> list[dict]:
         """Get all publisher declarations with containing files and topics.
         
@@ -157,7 +163,7 @@ class JoernQueryAPI:
         ))
         }'''
 
-    @_json_query_decorator
+    @_query_decorator
     def get_subscribers(self) -> list[dict]:
         """Get all subscriber declarations with files, callbacks, and topics.
         
@@ -176,22 +182,16 @@ class JoernQueryAPI:
         ))
         }'''
     
-    @_json_query_decorator
-    def get_puttables(self) -> list[dict]:
-        ...
-    
-    def get_put_stmts(self):
-        ...
 
-    @_json_query_decorator
-    def getCFGAsDot(self, file_name: str, function_name: str):
+    @_query_decorator
+    def get_cfg_as_dot(self, file_name: str, function_name: str):
         return f"cpg.method.filename(\"{file_name}\").name(\"{function_name}\").dotCfg"
 
-    @_json_query_decorator
-    def getFiles(self):
+    @_query_decorator
+    def get_files(self):
         return "cpg.file.name(\".*\\\\.cpp\").map(_.name)"
 
-    @_json_query_decorator
+    @_query_decorator
     def get_callback_control_flows(self, file_name: str) -> list[dict]:
         return f"""cpg.call("declare_subscriber").where(_.file.name("{file_name}")).map {{ subCall =>
         val topic = subCall.argument(1).code
@@ -230,32 +230,6 @@ class JoernQueryAPI:
                         "dotGraph"  -> dotGraph
                 )
             }}"""
-    
-    @_json_query_decorator
-    def get_main_control_flows(self) -> list[dict]:
-        return """cpg.method.name("main")
-        .map(m => Map(
-            "file"   -> m.file.name.headOption.getOrElse("unknown"),
-            "mainFullName" -> m.fullName,
-            "dotCfg" -> m.dotCfg.headOption.getOrElse("CFG resolution failed")
-        ))
-        """
-
-    @_json_query_decorator
-    def get_main_called_methods(self) -> list[dict]:
-        return """cpg.method.name("main").map { m =>
-        val calledMethods = m.call.callee
-            .repeat(_.call.callee)(_.emit)
-            .filterNot(_.isExternal)
-            .fullName
-            .l
-            .distinct
-        Map(
-            "file" -> m.file.name.headOption.getOrElse("unknown"),
-            "mainFullName" -> m.fullName,
-            "calledMethods" -> calledMethods
-        )
-      }"""
     
     def close(self) -> None:
         """Close the connection to Joern server.
