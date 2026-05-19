@@ -145,43 +145,6 @@ class JoernQueryAPI:
             (sessionVar, putArgs)
         }}.toMap'''
     
-    @_query_decorator
-    def get_publishers(self) -> list[dict]:
-        """Get all publisher declarations with containing files and topics.
-        
-        Returns publisher information grouped by file name, with each publisher's
-        keyExpr (topic).
-        
-        Returns:
-            List of dicts: [{fileName: [{keyExpr: str}, ...]}, ...]
-        """
-        return '''cpg.call.name(\"declare_publisher\").l
-        .groupBy(_.file.name.headOption.getOrElse(\"unknown\"))
-        .map { case (fileName, calls) =>
-        fileName -> calls.map(c => Map(
-        "keyExpr" -> c.argument(1).code
-        ))
-        }'''
-
-    @_query_decorator
-    def get_subscribers(self) -> list[dict]:
-        """Get all subscriber declarations with files, callbacks, and topics.
-        
-        Returns subscriber information grouped by file name, with each subscriber's
-        keyExpr (topic) and callback function name.
-        
-        Returns:
-            List of dicts: [{fileName: [{keyExpr: str, callback: str}, ...]}, ...]
-        """
-        return '''cpg.call.name(\"declare_subscriber\").l
-        .groupBy(_.file.name.headOption.getOrElse(\"unknown\"))
-        .map { case (fileName, calls) =>
-        fileName -> calls.map(c => Map(
-        "keyExpr" -> c.argument(1).code,
-        "callback" -> c.argument(2).code
-        ))
-        }'''
-    
 
     @_query_decorator
     def get_cfg_as_dot(self, file_name: str, function_name: str):
