@@ -47,13 +47,13 @@ class Builder:
         return self._build_cfg(main)
 
 
-    def getSubscriberInfo(self, file_name: str) -> list[CallbackNode]:
+    def getSubscriberInfo(self, file_name: str) -> list[CallbackThread]:
         '''Returns a list of CallbackNodes in a given file name.'''
         subscriberData = self.api.get_callback_control_flows(file_name)
         callbackNodes = []
         for data in subscriberData:
             topic, callback_name, dotGraph = data['topic'], data['callback'], data['dotGraph']
-            callbackNodes.append(CallbackNode(
+            callbackNodes.append(CallbackThread(
                 file_name,
                 callback_name,
                 topic,
@@ -102,8 +102,8 @@ class Builder:
             self.translation_units.append(
                 TranslationUnit(
                     file_name=filename,
-                    main_node=MainNode(cfg=mainCFG),
-                    callback_nodes=subs, 
+                    main_thread=MainThread(cfg=mainCFG),
+                    callback_threads=subs, 
                     var_publishers=pubVars,
                     sess_publishers=sessionPubs,
                 ))

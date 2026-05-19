@@ -13,7 +13,7 @@ class ControlFlowGraph:
 
 
 @dataclass
-class CallbackNode:
+class CallbackThread:
     callback_name: str
     key_expr: str
     cfg: ControlFlowGraph
@@ -21,18 +21,18 @@ class CallbackNode:
 
 # TODO change CFG schemas
 @dataclass
-class MainNode:
+class MainThread:
     cfg: ControlFlowGraph
 
 @dataclass
 class ExecutionBranch:
-    node: Union[MainNode, CallbackNode]
+    node: Union[MainThread, CallbackThread]
 
     @property
     def name(self):
-        if isinstance(self.node, MainNode):
+        if isinstance(self.node, MainThread):
             return "main"
-        elif isinstance(self.node, CallbackNode):
+        elif isinstance(self.node, CallbackThread):
             return self.node.callback_name
         else:
             raise ValueError("Invalid node type")
@@ -52,7 +52,7 @@ class SessPublisher:
 @dataclass
 class TranslationUnit:
     file_name: str
-    main_node: MainNode
-    callback_nodes: list[CallbackNode] = field(default_factory=list)
+    main_thread: MainThread
+    callback_threads: list[CallbackThread] = field(default_factory=list)
     var_publishers: list[VarPublisher] = field(default_factory=list)
     sess_publishers: list[SessPublisher] = field(default_factory=list)

@@ -1,5 +1,6 @@
 """DOT parsing utilities for Joern CFGs."""
 from typing import Optional, Tuple
+from dataclasses import field, dataclass
 import networkx as nx
 import pydot
 
@@ -25,6 +26,26 @@ def parse_dot_to_graph(dot: str):
 
     return nx_graph, None
 
+@dataclass
+class CFGNode:
+    id: int = -1
+    node_type: str = ''
+    label: str = ''
+    predecessors: list[int] = field(default_factory=list)
+    successors: list[int] = field(default_factory=list)
+
+    @property
+    def is_put(self):
+        return self.node_type == "put"
+    
+    @property
+    def is_method_return(self):
+        return self.node_type == "METHOD_RETURN"
+
+
+
+
+
 class JoernCFG:
     def __init__(self, raw_dot: str):
         self.graph, self.error = parse_dot_to_graph(raw_dot)
@@ -35,6 +56,60 @@ class JoernCFG:
         if self.graph:
             self._clean_node_ids()
             self._prettify_labels()
+            self.num_nodes = self.graph.number_of_nodes()
+            self._construct_cfg_nodes()
+
+    def _construct_cfg_nodes(self):
+        """Constructs CFGNode objects for each node in the graph and stores them in a dictionary."""
+        self.cfg_nodes = []
+        for node_id in range(1, self.num_nodes + 1):
+            data = self.graph.nodes[node_id]
+            node = CFGNode(
+                id=node_id,
+                node_type=data.get('node_type', ''),
+                label=data.get('label', '')
+            )
+            self.cfg_nodes.append(node)
+
+        for node_id in range(1, self.num_nodes + 1):
+            current_node = self.cfg_nodes[node_id - 1]
+            
+            current_node.predecessors = [
+                self.cfg_nodes[pred_id - 1] 
+                for pred_id in self.graph.predecessors(node_id)
+            ]
+            
+            current_node.successors = [
+                self.cfg_nodes[succ_id - 1] 
+                for succ_id in self.graph.successors(node_id)
+            ]
+
+    def _find_method_entry(self) -> Optional[int]:
+        """Finds the entry node of the CFG, which is typically the METHOD type node.
+        Returns the node ID of the entry node, or None if not found."""
+        for node_id, data in self.graph.nodes(data=True):
+            if data.get('node_type') == 'METHOD':
+                return node_id
+        return None
+
+    def __iter__(self):
+        """Allows iteration over graph nodes. Provides a high-level
+        view for nodes in the graph. Starts automatically from METHOD type node."""
+        if self.graph:
+            source = self._find_method_entry()
+            if source is not None:
+               ordered_ids = list(nx.dfs_preorder_nodes(self.graph, source=source))
+               for node_id in ordered_ids:
+                yield self.cfg_nodes[node_id - 1]
+        else:
+            return iter([])
+        
+    def items(self):
+        """Returns an iterable of (node_id, node_data) tuples."""
+        if self.graph:
+            return self.graph.nodes(data=True)
+        else:
+            return []
             
     def _clean_node_ids(self):
         """Relabel each node with a clean integer ID, starting from 1.

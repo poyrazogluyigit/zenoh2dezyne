@@ -12,7 +12,7 @@ class DezyneStateVar:
         return self.lower_bound
 
 @dataclass
-class DezyneStateGuard:
+class DezyneGuard:
     variable: str
     value: int
 
@@ -29,7 +29,7 @@ class DezyneAction:
 
 @dataclass
 class DezyneBehaviorStatement:
-    lhs: Union[DezyneStateGuard, DezyneTrigger]
+    lhs: Union[DezyneGuard, DezyneTrigger]
     rhs: list[str] = field(default_factory=list)
 
 @dataclass

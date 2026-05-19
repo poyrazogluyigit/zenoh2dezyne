@@ -77,11 +77,33 @@ class CodeGenerator:
         ...
 
     def generateBehavior(self, unit: TranslationUnit):
-        possible_executions = []
-        cfgs = [unit.main_cfg] + [cb.cfg for cb in unit.callback_cfgs]
+        cfgs = [unit.main_thread.cfg] + [cb.cfg for cb in unit.callback_threads]
         branches = []
         for cfg in cfgs:
-            ...
+            statements = []
+            for node in cfg:
+                if node.is_put:
+                    # create DezyneAction for put event
+                    pass
+                if node.is_return:
+                    # return execution to main if in callback
+                    pass
+                for succ in node.successors:
+                    # create DezyneVarSet for state transition
+                    pass
+            branch = DezyneBehaviorStatement(
+                lhs=DezyneGuard(...),
+                rhs=statements
+            )
+            branches.append(branch)
+        # create initialization statements for state variables
+        # create possible execution statements
+        # create on step statements for branches
+        behavior_statement_part = DezyneBehaviorStatement(
+            lhs=DezyneTrigger("step"),
+            rhs=branches
+        )
+        return DezyneBehavior(...)
 
     def generateStepper(self):
         interface = DezyneInterface(
