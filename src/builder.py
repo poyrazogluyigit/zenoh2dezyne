@@ -1,6 +1,6 @@
 import logging
 from frontend.api import JoernQueryAPI
-from containers import *
+from datatypes import *
 from graphutils import parse_dot_to_graph
 
 logger = logging.getLogger(__name__)
@@ -52,10 +52,10 @@ class Builder:
         subscriberData = self.api.get_callback_control_flows(file_name)
         callbackNodes = []
         for data in subscriberData:
-            topic, callback, dotGraph = data['topic'], data['callback'], data['dotGraph']
+            topic, callback_name, dotGraph = data['topic'], data['callback'], data['dotGraph']
             callbackNodes.append(CallbackNode(
                 file_name,
-                callback,
+                callback_name,
                 topic,
                 self._build_cfg(dotGraph)
             ))
@@ -101,11 +101,11 @@ class Builder:
             sessionPubs = self.getSessionPuts(filename)
             self.translation_units.append(
                 TranslationUnit(
-                    main_cfg=mainCFG,
-                    callback_cfgs=subs, 
+                    file_name=filename,
+                    main_node=MainNode(cfg=mainCFG),
+                    callback_nodes=subs, 
                     var_publishers=pubVars,
                     sess_publishers=sessionPubs,
-                    called_method_fullnames=None
                 ))
 
     def buildProject(self, project_name: str):

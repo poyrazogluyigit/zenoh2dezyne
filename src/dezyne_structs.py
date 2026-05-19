@@ -1,0 +1,75 @@
+from dataclasses import dataclass, field
+from typing import Optional, Union
+
+@dataclass
+class DezyneStateVar:
+    name: str
+    lower_bound: int = 1
+    upper_bound: int
+    
+    @property 
+    def initial_value(self):
+        return self.lower_bound
+
+@dataclass
+class DezyneStateGuard:
+    variable: str
+    value: int
+
+@dataclass
+class DezyneTrigger:
+    trigger: str
+
+class DezyneVarSet:
+    variable = str
+    value = str
+
+class DezyneAction:
+    out_event: str
+
+@dataclass
+class DezyneBehaviorStatement:
+    lhs: Union[DezyneStateGuard, DezyneTrigger]
+    rhs: list[str] = field(default_factory=list)
+
+@dataclass
+class DezyneEnumDecl:
+    name: str
+    values: list[str] = field(default_factory=list)
+
+@dataclass
+class DezyneEnumVariableDecl:
+    name: str
+    enum_type: str
+    value: str
+
+@dataclass
+class DezyneBehavior:
+    state_vars: list[DezyneStateVar] = field(default_factory=list)
+    statements: list[DezyneBehaviorStatement] = field(default_factory=list)
+
+    @property
+    def possible_executions(self):
+        return ["main"] + [state_var.name for state_var in self.state_vars]
+
+
+
+@dataclass
+class DezyneInterface:
+    name: str
+    in_events: list[str] = field(default_factory=list)
+    out_events: list[str] = field(default_factory=list)
+    behavior: DezyneBehavior
+
+@dataclass
+class DezyneComponent:
+    name: str
+    provides: list[DezyneInterface] = field(default_factory=list)
+    requires: list[DezyneInterface] = field(default_factory=list)
+    behavior: Optional[str] = None
+
+@dataclass
+class DezyneFile:
+    file_name: str
+    interface: DezyneInterface
+    component: DezyneComponent

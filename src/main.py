@@ -12,9 +12,12 @@ def main():
     logging.debug(f"Parsed arguments: {args}")
 
     from codegen import CodeGenerator
+    from builder import Builder
     logging.debug("Starting code generation process")
-    codegen = CodeGenerator(args.project_name, args.output, args.joern_server)
-    codegen.generate_code()
+    builder = Builder(joern_server=args.joern_server)
+    builder.buildProject(args.project_name)
+    codegen = CodeGenerator(args.output)
+    codegen.generate(builder)
 
 if __name__ == "__main__":
     main()

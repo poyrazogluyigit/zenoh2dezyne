@@ -1,6 +1,7 @@
 import logging
 from builder import Builder
 from datatypes import *
+from dezyne_structs import *
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -8,8 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class CodeGenerator:
-    def __init__(self, output_dir: str = ""):
+    def __init__(self, output_dir: str = "."):
         self.nodes = []
+        self.output_dir = output_dir
         self.stepper = None
         self.networkElement = None
         self.topModel = None
@@ -29,8 +31,7 @@ class CodeGenerator:
         translation_units = builder.translation_units
         self.nodes = [self.generateUnitModel(unit) for unit in translation_units]
         self.fetchConnections(translation_units)
-        if self.stepper is None:
-            self.generateStepper()
+        self.generateStepper()
         self.generateNetworkElement(single_stepper)
         self.generateTopModel()
         
@@ -41,11 +42,65 @@ class CodeGenerator:
         '''Construct a connection graph corresponding to keyexpr connections between nodes.'''
         ...
 
-    def generateUnitModel(self, unit: TranslationUnit) -> DezyneFile:
+    def generateUnitModel(self, unit: TranslationUnit) -> DezyneComponent:
+        interface = DezyneInterface(
+            name=unit.filename,
+            in_events = [i.key_expr for i in unit.callback_cfgs],
+            out_events = [i.key_expr for i in unit.var_publishers] 
+            + [expr for i in unit.sess_publishers for expr in i.key_exprs],
+            behavior=self.generateBehavior(unit)
+        )
+        return DezyneComponent(
+            name=unit.filename,
+            provides=[interface],
+            requires=[]
+        )  
+      
+    '''
+    0. kac cfg varsa ona gore possible executions olustur
+    1. her cfg icin:
+        1. cfg sinde kac state varsa ona gore state degiskeni olustur
+        2. cfg sinde kac state varsa o kadar DezyneBehaviorStatement olustur
+        3. cfg'deki her node'u 1'den itibaren numaralandir
+        4. her bir node icin:
+            1. eger icinde put event varsa DezyneAction olustur
+            2. DezyneVarSet olustur (stateVar, number of next State)
+            3. rhs = [DezyneAction, DezyneVarSet]
+            4. eger return node'su ise rhs'ye possible executions setleme ekle
+        5. branch = DezyneBehaviorStatement(possible execution == cfg, [her node icin olusturulan DezyneBehaviorStatement])
+    2. state degiskeni initializationlari
+    3. actions = DezyneBehaviorStatement(on step, [her cfg icin olusturulan branch'ler])
+    4. DezyneBehavior(state degiskenleri, [possible executions + initializationlar + actions])
+    '''
+
+    def generateBehaviorForCFG(self, cfg: ControlFlowGraph):
         ...
 
+    def generateBehavior(self, unit: TranslationUnit):
+        possible_executions = []
+        cfgs = [unit.main_cfg] + [cb.cfg for cb in unit.callback_cfgs]
+        branches = []
+        for cfg in cfgs:
+            ...
+
     def generateStepper(self):
-        ...
+        interface = DezyneInterface(
+            name="Step",
+            in_events=[],
+            out_events=["step"],
+            behavior=DezyneBehavior(
+                state_vars=[],
+                statements=[DezyneBehaviorStatement(
+                    lhs=DezyneTrigger("inevitable"),
+                    rhs=["step"]
+                )]
+            )
+        )
+        self.stepper = DezyneComponent(
+            name="Step",
+            provides = [interface],
+            requires=[]
+        ) if self.stepper is None else self.stepper
     
     def generateNetworkElement(self, single_stepper = False):
         ...
