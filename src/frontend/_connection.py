@@ -24,9 +24,6 @@ class Connection:
         self._start()
 
     def sendQuery(self, query: str):
-        if not self.proc:
-            logger.error("Joern is not running. Call start() first.")
-            exit(1)
         logger.debug(f"Sending query to Joern: {query[:100]}...")
         response = self.session.post(
             f"{self.joern_server}/query-sync", 

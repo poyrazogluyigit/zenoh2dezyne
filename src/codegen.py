@@ -1,7 +1,7 @@
 import logging
 from builder import Builder
-from datatypes import *
-from dezyne_structs import *
+from datatypes import ControlFlowGraph, CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from dezyne_structs import DezyneComponent, DezyneInterface, DezyneBehavior, DezyneBehaviorStatement, DezyneGuard, DezyneTrigger
 from pathlib import Path
 
 logger = logging.getLogger(__name__)

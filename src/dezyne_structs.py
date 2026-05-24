@@ -20,10 +20,12 @@ class DezyneGuard:
 class DezyneTrigger:
     trigger: str
 
+@dataclass
 class DezyneVarSet:
-    variable = str
-    value = str
+    variable: str
+    value: str
 
+@dataclass
 class DezyneAction:
     out_event: str
 

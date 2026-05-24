@@ -1,6 +1,6 @@
 import logging
 from frontend.api import JoernQueryAPI
-from datatypes import *
+from datatypes import ControlFlowGraph, CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
 from graphutils import parse_dot_to_graph
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class Builder:
         graph, error = parse_dot_to_graph(dot)
         if error is not None:
             logger.error(error)
-            exit(1)
+            raise ValueError(f"Failed to build CFG: {error}")
         node_count = graph.number_of_nodes()
         edge_count = graph.number_of_edges()
         return ControlFlowGraph(
