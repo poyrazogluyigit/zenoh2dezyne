@@ -6,17 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from graphutils import JoernCFG, parse_dot_to_graph
-
-proper_dot = '''digraph "&lt;lambda&gt;0" 
-        {  \nnode [shape="rect"];  \n"30064771087" [label = <put, 19<BR/>A_pub.put(&quot;example payload to A&quot;)> ]\n"30064771083" 
-        [label = <&lt;operator&gt;.assignment, 16<BR/>i = 0> ]\n"30064771084" 
-        [label = <&lt;operator&gt;.lessThan, 16<BR/>i &lt; 5> ]\n"30064771085" 
-        [label = <&lt;operator&gt;.postIncrement, 16<BR/>i++> ]\n"30064771086" 
-        [label = <put, 17<BR/>C_pub.put(&quot;example payload to C&quot;)> ]\n"107374182404" 
-        [label = <METHOD, 15<BR/>&lt;lambda&gt;0> ]\n"124554051587" [label = <METHOD_RETURN, 15<BR/>void> ]\n  
-        "30064771087" -> "124554051587" \n  "30064771083" -> "30064771084" \n  
-        "30064771084" -> "30064771086" \n  "30064771084" -> "30064771087" \n  "30064771085" -> "30064771084" 
-        \n  "30064771086" -> "30064771085" \n  "107374182404" -> "30064771083" \n}\n'''
+from .example_dotcfgs import looping_callback
 
 
 class TestCFG(unittest.TestCase):
@@ -50,7 +40,7 @@ class TestCFG(unittest.TestCase):
         self.assertIn(edges[0], [("NodeA", "NodeB")])
 
     def test_cfg_labeling(self):
-        cfg = self._make_cfg(proper_dot)
+        cfg = self._make_cfg(looping_callback)
         cfg._prettify_labels()
 
         self.assertIsNone(cfg.error)
@@ -61,7 +51,7 @@ class TestCFG(unittest.TestCase):
         self.assertIsNotNone(method_node)
 
     def test_cfg_entry_node(self):
-        cfg = self._make_cfg(proper_dot)
+        cfg = self._make_cfg(looping_callback)
         cfg._prettify_labels()
 
         self.assertIsNone(cfg.error)
@@ -73,7 +63,7 @@ class TestCFG(unittest.TestCase):
         self.assertEqual(cfg.graph.nodes[entry].get("node_type"), "METHOD")
 
     def test_proper_cfg(self):
-        cfg = self._make_cfg(proper_dot)
+        cfg = self._make_cfg(looping_callback)
         cfg._prettify_labels()
         cfg.source = self._find_node_id_by_type(cfg.graph, "METHOD")
         self.assertIsNotNone(cfg.source)
@@ -92,7 +82,7 @@ class TestCFG(unittest.TestCase):
         self.assertIn((3, 6), edges)
 
     def test_cfg_iter(self):
-        cfg = JoernCFG(proper_dot)
+        cfg = JoernCFG(looping_callback)
 
         for _node in cfg:
             pass
