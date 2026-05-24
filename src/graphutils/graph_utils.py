@@ -3,6 +3,8 @@ from typing import Optional, Tuple
 from dataclasses import field, dataclass
 import networkx as nx
 import pydot
+import html
+import re
 
 
 def parse_dot_to_graph(dot: str):
@@ -139,8 +141,6 @@ class JoernCFG:
         self.graph = nx.relabel_nodes(self.graph, mapping)
 
     def _prettify_labels(self):
-        import html
-        import re
         """Parses Joern's raw DOT labels to extract clean code and metadata.
         Unescapes HTML entities and splits metadata from the actual code snippet.
         """

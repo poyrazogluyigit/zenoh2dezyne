@@ -9,13 +9,14 @@ import logging
 import json
 import re
 from functools import wraps
+from typing import Any
 
 from ._connection import Connection
 
 logger = logging.getLogger(__name__)
 
 
-def _parse_joern_json(response: str) -> object:
+def _parse_joern_json(response: str) -> Any:
     """Parse Joern's JSON response, stripping ANSI codes and extracting JSON.
     
     Args:

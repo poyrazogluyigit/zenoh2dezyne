@@ -1,5 +1,7 @@
 import argparse
 import logging
+from codegen import CodeGenerator
+from builder import Builder
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Dezyne code from a Zenoh C++ applications using Joern")
@@ -11,8 +13,6 @@ def main():
     logging.basicConfig(level=getattr(logging, args.logging.upper(), None), format='%(asctime)s - %(levelname)s - %(message)s')
     logging.debug(f"Parsed arguments: {args}")
 
-    from codegen import CodeGenerator
-    from builder import Builder
     logging.debug("Starting code generation process")
     builder = Builder(joern_server=args.joern_server)
     builder.buildProject(args.project_name)

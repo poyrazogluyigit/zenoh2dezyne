@@ -27,8 +27,7 @@ class CodeGenerator:
         3. top modeli generatele
 
         '''
-    def generate(self, builder: Builder, single_stepper = False):
-        translation_units = builder.translation_units
+    def generate(self, translation_units: list[TranslationUnit], single_stepper = False):
         self.nodes = [self.generateUnitModel(unit) for unit in translation_units]
         self.fetchConnections(translation_units)
         self.generateStepper()
