@@ -54,7 +54,6 @@ class Builder:
         for data in subscriberData:
             topic, callback_name, dotGraph = data['topic'], data['callback'], data['dotGraph']
             callbackNodes.append(CallbackThread(
-                file_name,
                 callback_name,
                 topic,
                 self._build_cfg(dotGraph)
@@ -125,5 +124,5 @@ class Builder:
     
 if __name__ == "__main__":
     builder = Builder()
-    builder.buildDict("pgm-no-zenoh")
+    builder.buildProject("pgm-no-zenoh")
     print(builder.translation_units)

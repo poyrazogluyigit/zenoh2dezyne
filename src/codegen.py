@@ -44,8 +44,8 @@ class CodeGenerator:
 
     def generateUnitModel(self, unit: TranslationUnit) -> DezyneComponent:
         interface = DezyneInterface(
-            name=unit.filename,
-            in_events = [i.key_expr for i in unit.callback_cfgs],
+            name=unit.file_name,
+            in_events = [i.key_expr for i in unit.callback_threads],
             out_events = [i.key_expr for i in unit.var_publishers] 
             + [expr for i in unit.sess_publishers for expr in i.key_exprs],
             behavior=self.generateBehavior(unit)
@@ -134,4 +134,4 @@ class CodeGenerator:
 
 if __name__ == "__main__":
     codegen = CodeGenerator("pgm-no-zenoh")
-    codegen.generate_code()
+    codegen.generate()

@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional, Union
-from pydot import Dot
+from networkx import DiGraph
 
 
 @dataclass
 class ControlFlowGraph:
     dot: str
-    graph: Union[Dot, None]
+    graph: DiGraph | None
     node_count: int
     edge_count: int
     parse_error: Optional[str] = None

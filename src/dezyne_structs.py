@@ -5,7 +5,7 @@ from typing import Optional, Union
 class DezyneStateVar:
     name: str
     lower_bound: int = 1
-    upper_bound: int
+    upper_bound: int = 2
     
     @property 
     def initial_value(self):
