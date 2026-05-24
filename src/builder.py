@@ -1,6 +1,6 @@
 import logging
 from frontend.api import JoernQueryAPI
-from types.datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from datatypes._datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
 from graphutils import JoernCFG
 
 logger = logging.getLogger(__name__)
@@ -106,8 +106,3 @@ class Builder:
         logger.debug("Retrieving publisher/subscriber information from Joern")
         self.buildTranslationUnitStructs()
         logger.debug("Joern analysis complete, returning unit data")
-    
-if __name__ == "__main__":
-    builder = Builder()
-    builder.buildProject("pgm-no-zenoh")
-    print(builder.translation_units)

@@ -1,6 +1,7 @@
 import logging
-from types.datatypes import ControlFlowGraph, CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
-from types.dezyne_structs import DezyneComponent, DezyneInterface, DezyneBehavior, DezyneBehaviorStatement, DezyneGuard, DezyneTrigger
+from datatypes._datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from datatypes.dezyne_structs import DezyneComponent, DezyneInterface, DezyneBehavior, DezyneBehaviorStatement, DezyneGuard, DezyneTrigger
+from graphutils import JoernCFG
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ class CodeGenerator:
     4. DezyneBehavior(state degiskenleri, [possible executions + initializationlar + actions])
     '''
 
-    def generateBehaviorForCFG(self, cfg: ControlFlowGraph):
+    def generateBehaviorForCFG(self, cfg: JoernCFG):
         ...
 
     def generateBehavior(self, unit: TranslationUnit):
@@ -126,9 +127,3 @@ class CodeGenerator:
     
     def generateTopModel(self):
         ...
-
-
-
-if __name__ == "__main__":
-    codegen = CodeGenerator("pgm-no-zenoh")
-    codegen.generate()

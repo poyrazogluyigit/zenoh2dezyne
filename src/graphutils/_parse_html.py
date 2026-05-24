@@ -21,5 +21,6 @@ def _prettify_labels(nodes):
             nodeType, code = _clean_label(raw_label)
             data['node_type'] = nodeType
             data['code'] = code
+            del data['label']
             
 

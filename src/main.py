@@ -17,7 +17,7 @@ def main():
     builder = Builder(joern_server=args.joern_server)
     builder.buildProject(args.project_name)
     codegen = CodeGenerator(args.output)
-    codegen.generate(builder)
+    codegen.generate(builder.translation_units)
 
 if __name__ == "__main__":
     main()

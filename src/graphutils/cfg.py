@@ -1,9 +1,6 @@
 """DOT parsing utilities for Joern CFGs."""
-from typing import Optional, Tuple
 from dataclasses import field, dataclass
 import networkx as nx
-import html
-import re
 
 from .dot_parser import parse_dot_to_graph
 from ._parse_html import _prettify_labels
@@ -32,7 +29,7 @@ class JoernCFG:
             raise ValueError(f"Failed to parse CFG: {self.error}")
         
         if self.graph:
-            self._prettify_labels()
+            self._clean_node_data()
             self.source = self._find_method_entry()
             self._clean_node_ids()
             # reset source after cleaning node IDs
@@ -112,7 +109,7 @@ class JoernCFG:
         # Apply the mapping to the graph
         self.graph = nx.relabel_nodes(self.graph, mapping)
 
-    def _prettify_labels(self):
+    def _clean_node_data(self):
         """Parses Joern's raw DOT labels to extract clean code and metadata.
         Unescapes HTML entities and splits metadata from the actual code snippet.
         """
