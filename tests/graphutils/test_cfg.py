@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from graphutils import JoernCFG, parse_dot_to_graph
-from .example_dotcfgs import looping_callback
+from .mock_data import looping_callback
 
 
 class TestCFG(unittest.TestCase):

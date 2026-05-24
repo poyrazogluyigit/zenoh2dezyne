@@ -1,3 +1,6 @@
+from src.graphutils import JoernCFG
+from src.datatypes import TranslationUnit, VarPublisher, CallbackThread, SessPublisher
+
 empty_callback = '''digraph \"C_callback\" {  \nnode [shape=\"rect\"];  \n
 \"141733920768\" [label = <RETURN, 5<BR/>return;> ]\n\"107374182402\" [label = <METHOD, 4<BR/>C_callback> ]\n
 \"124554051586\" [label = <METHOD_RETURN, 4<BR/>void> ]\n  \"141733920768\" -> \"124554051586\" \n 
@@ -27,3 +30,22 @@ looping_callback = '''digraph \"&lt;lambda&gt;0\" {  \nnode [shape=\"rect\"];  \
 \"30064771084\" -> \"30064771086\" \n  \"30064771084\" -> \"30064771087\" \n  
 \"30064771085\" -> \"30064771084\" \n  \"30064771086\" -> \"30064771085\" \n  
 \"107374182404\" -> \"30064771083\" \n}\n'''
+
+put_callback = '''digraph \"callback\" {  \nnode [shape=\"rect\"];  \n
+\"30064771087\" [label = <put, 19<BR/>A_pub.put(&quot;example payload to A&quot;)> ]\n
+\"30064771088\" [label = <put, 19<BR/>session.put(&quot;example/topic/session_out&quot;, &quot;example payload to session&quot;)> ]\n
+\"30064771083\" [label = <METHOD, 16<BR/>&lt;callback&gt;> ]\n
+\"124554051587\" [label = <METHOD_RETURN, 16<BR/>void> ]\n 
+\"30064771087\" -> \"30064771088\" \n  
+\"30064771088\" -> \"124554051587\" \n  
+\"30064771083\" -> \"30064771087\" \n}\n
+'''
+
+# generate a mock translation unit
+mock_translation_unit = TranslationUnit(
+    file_name="mock_file.cpp",
+    main=None,
+    callbacks=[CallbackThread(name="callback", key_expr="example/topic/in", cfg=JoernCFG(put_callback))],
+    var_publishers=[VarPublisher(var="A_pub", key_expr="example/topic/var_out")],
+    sess_publishers=[SessPublisher(sess="session", key_exprs=["example/topic/session_out"])]
+)

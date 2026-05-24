@@ -5,6 +5,7 @@ import networkx as nx
 from .dot_parser import parse_dot_to_graph
 from ._parse_html import _prettify_labels
 
+# TODO get rid of this
 @dataclass
 class CFGNode:
     id: int = -1
@@ -36,6 +37,22 @@ class JoernCFG:
             self.source = 1
             self.num_nodes = self.graph.number_of_nodes()
             self._construct_cfg_nodes()
+
+    def get_successors(self, node_id: int) -> list[int]:
+        """Returns a list of successor node IDs for the given node ID."""
+        if self.graph and node_id in self.graph:
+            return list(self.graph.successors(node_id))
+        else:
+            raise ValueError(f"Node ID {node_id} not found in CFG")
+        
+    def get_predecessors(self, node_id: int) -> list[int]:
+        """Returns a list of predecessor node IDs for the given node ID."""
+        if self.graph and node_id in self.graph:
+            return list(self.graph.predecessors(node_id))
+        else:
+            raise ValueError(f"Node ID {node_id} not found in CFG")
+        
+    
 
     def _construct_cfg_nodes(self):
         """Constructs CFGNode objects for each node in the graph and stores them in a dictionary."""
