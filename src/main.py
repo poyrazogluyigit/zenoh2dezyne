@@ -16,7 +16,7 @@ def main():
 
     logging.debug("Starting code generation process")
     with JoernQueryAPI(args.joern_server) as api:
-        builder = Builder(joern_server=args.joern_server, joern_api=api)
+        builder = Builder(api)
         units = builder.buildProject(args.project_name)
         codegen = CodeGenerator(args.output)
         codegen.generate(units)

@@ -12,14 +12,14 @@ class Builder:
     and control flow data from C++ applications, producing Unit objects.
     """
     
-    def __init__(self, joern_server: str = "", api=None):
+    def __init__(self, joern_api: JoernQueryAPI):
         """Initialize Builder with Joern API.
         
         Args:
             joern_server: URL of Joern server (e.g., "http://localhost:8080")
                          If empty, a local server will be started.
         """
-        self.api = api
+        self.api = joern_api
         self.translation_units = []
 
     
