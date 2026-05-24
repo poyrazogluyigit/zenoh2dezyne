@@ -50,7 +50,7 @@ class CodeGenerator:
             behavior=self.generateBehavior(unit)
         )
         return DezyneComponent(
-            name=unit.filename,
+            name=unit.file_name,
             provides=[interface],
             requires=[]
         )  

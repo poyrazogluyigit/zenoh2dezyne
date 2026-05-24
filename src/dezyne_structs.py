@@ -59,9 +59,9 @@ class DezyneBehavior:
 @dataclass
 class DezyneInterface:
     name: str
+    behavior: DezyneBehavior
     in_events: list[str] = field(default_factory=list)
     out_events: list[str] = field(default_factory=list)
-    behavior: DezyneBehavior
 
 @dataclass
 class DezyneComponent:
