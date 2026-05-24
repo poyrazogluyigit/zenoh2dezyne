@@ -1,7 +1,7 @@
 import logging
 from frontend.api import JoernQueryAPI
-from datatypes import ControlFlowGraph, CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
-from graphutils import parse_dot_to_graph
+from types.datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from graphutils import JoernCFG
 
 logger = logging.getLogger(__name__)
 
@@ -22,29 +22,14 @@ class Builder:
         self.api = JoernQueryAPI(joern_server)
         self.translation_units = []
 
-    def _build_cfg(self, dot: str) -> ControlFlowGraph:
-        graph, error = parse_dot_to_graph(dot)
-        if error is not None:
-            logger.error(error)
-            raise ValueError(f"Failed to build CFG: {error}")
-        node_count = graph.number_of_nodes()
-        edge_count = graph.number_of_edges()
-        return ControlFlowGraph(
-            dot=dot,
-            graph=graph,
-            node_count=node_count,
-            edge_count=edge_count,
-            parse_error=error,
-        )
     
     def getSourceFiles(self) -> list[str]:
         return self.api.get_files()
     
 
-    def getMainCFG(self, file_name: str) -> ControlFlowGraph:
+    def getMainCFG(self, file_name: str) -> JoernCFG:
         main = self.api.get_cfg_as_dot(file_name, "main")[0]
-        logger.debug(f"Retrieved main CFG from {file_name}: {main}")
-        return self._build_cfg(main)
+        return JoernCFG(main)
 
 
     def getSubscriberInfo(self, file_name: str) -> list[CallbackThread]:
@@ -56,7 +41,7 @@ class Builder:
             callbackNodes.append(CallbackThread(
                 callback_name,
                 topic,
-                self._build_cfg(dotGraph)
+                JoernCFG(dotGraph)
             ))
         return callbackNodes
     
@@ -101,8 +86,8 @@ class Builder:
             self.translation_units.append(
                 TranslationUnit(
                     file_name=filename,
-                    main_thread=MainThread(cfg=mainCFG),
-                    callback_threads=subs, 
+                    main=MainThread(cfg=mainCFG),
+                    callbacks=subs, 
                     var_publishers=pubVars,
                     sess_publishers=sessionPubs,
                 ))

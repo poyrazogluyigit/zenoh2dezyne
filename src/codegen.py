@@ -1,8 +1,6 @@
 import logging
-from builder import Builder
-from datatypes import ControlFlowGraph, CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
-from dezyne_structs import DezyneComponent, DezyneInterface, DezyneBehavior, DezyneBehaviorStatement, DezyneGuard, DezyneTrigger
-from pathlib import Path
+from types.datatypes import ControlFlowGraph, CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from types.dezyne_structs import DezyneComponent, DezyneInterface, DezyneBehavior, DezyneBehaviorStatement, DezyneGuard, DezyneTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +42,7 @@ class CodeGenerator:
     def generateUnitModel(self, unit: TranslationUnit) -> DezyneComponent:
         interface = DezyneInterface(
             name=unit.file_name,
-            in_events = [i.key_expr for i in unit.callback_threads],
+            in_events = [i.key_expr for i in unit.callbacks],
             out_events = [i.key_expr for i in unit.var_publishers] 
             + [expr for i in unit.sess_publishers for expr in i.key_exprs],
             behavior=self.generateBehavior(unit)
@@ -76,7 +74,7 @@ class CodeGenerator:
         ...
 
     def generateBehavior(self, unit: TranslationUnit):
-        cfgs = [unit.main_thread.cfg] + [cb.cfg for cb in unit.callback_threads]
+        cfgs = [unit.main.cfg] + [cb.cfg for cb in unit.callbacks]
         branches = []
         for cfg in cfgs:
             statements = []

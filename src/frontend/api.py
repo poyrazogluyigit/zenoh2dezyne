@@ -95,7 +95,7 @@ class JoernQueryAPI:
 
     
     @staticmethod
-    def _query_decorator(func):
+    def _query(func):
         """Decorator for executing a Joern query that returns JSON.
         
         Decorated function should return a Joern query string.
@@ -109,7 +109,7 @@ class JoernQueryAPI:
             return _parse_joern_json(query_res)
         return wrapper
 
-    @_query_decorator
+    @_query
     def open_project(self, project_name: str):
         """Load a project by name into the Joern workspace.
         
@@ -122,12 +122,12 @@ class JoernQueryAPI:
         logger.debug(f"Opening Joern project: {project_name}")
         return f'open("{project_name}")'
     
-    @_query_decorator
+    @_query
     def import_code(self, input_path: str, project_name: str):
         logger.debug(f"Importing code from {input_path}")
         return f'importCode(inputPath="{input_path}", projectName="{project_name}")'
     
-    @_query_decorator
+    @_query
     def get_var_publishers(self, file_name: str) -> list[dict]:
         """Get (variable name, topic) info for all publishers in a file."""
         return f'''cpg.call.name("declare_publisher")
@@ -136,7 +136,7 @@ class JoernQueryAPI:
         (c.inAssignment.target.code.head, c.argument(1).code) 
         }}'''
     
-    @_query_decorator
+    @_query
     def get_session_variables(self, file_name: str):
         return f'''cpg.call.code(".*zenoh::Session::open\\\\(.*")
         .where(_.file.name("{file_name}"))
@@ -147,15 +147,16 @@ class JoernQueryAPI:
         }}.toMap'''
     
 
-    @_query_decorator
+    @_query
     def get_cfg_as_dot(self, file_name: str, function_name: str):
+        logger.debug(f"Retrieved CFG for {function_name} from {file_name}")
         return f"cpg.method.filename(\"{file_name}\").name(\"{function_name}\").dotCfg"
 
-    @_query_decorator
+    @_query
     def get_files(self):
         return "cpg.file.name(\".*\\\\.cpp\").map(_.name)"
 
-    @_query_decorator
+    @_query
     def get_callback_control_flows(self, file_name: str) -> list[dict]:
         return f"""cpg.call("declare_subscriber").where(_.file.name("{file_name}")).map {{ subCall =>
         val topic = subCall.argument(1).code
