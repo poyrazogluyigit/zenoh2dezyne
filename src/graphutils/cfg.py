@@ -9,7 +9,7 @@ from ._parse_html import _prettify_labels
 class CFGNode:
     id: int = -1
     node_type: str = ''
-    label: str = ''
+    code: str = ''
     predecessors: list[int] = field(default_factory=list)
     successors: list[int] = field(default_factory=list)
 
@@ -45,7 +45,7 @@ class JoernCFG:
             node = CFGNode(
                 id=node_id,
                 node_type=data.get('node_type', ''),
-                label=data.get('label', '')
+                label=data.get('code', '')
             )
             self.cfg_nodes.append(node)
 

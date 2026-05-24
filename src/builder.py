@@ -12,14 +12,14 @@ class Builder:
     and control flow data from C++ applications, producing Unit objects.
     """
     
-    def __init__(self, joern_server: str = ""):
+    def __init__(self, joern_server: str = "", api=None):
         """Initialize Builder with Joern API.
         
         Args:
             joern_server: URL of Joern server (e.g., "http://localhost:8080")
                          If empty, a local server will be started.
         """
-        self.api = JoernQueryAPI(joern_server)
+        self.api = api
         self.translation_units = []
 
     
@@ -76,14 +76,14 @@ class Builder:
             bir tam ifadenin subnodelari gidecek
         6. Son CFG'leri TranslationUnit icerisinde bir araya getir
     '''
-    def buildTranslationUnitStructs(self):
-        self.translation_units = []
+    def buildTranslationUnitStructs(self) -> list[TranslationUnit]:
+        translation_units = []
         for filename in self.getSourceFiles():
             subs = self.getSubscriberInfo(filename)
             mainCFG = self.getMainCFG(filename)
             pubVars = self.getPublishers(filename)
             sessionPubs = self.getSessionPuts(filename)
-            self.translation_units.append(
+            translation_units.append(
                 TranslationUnit(
                     file_name=filename,
                     main=MainThread(cfg=mainCFG),
@@ -91,8 +91,9 @@ class Builder:
                     var_publishers=pubVars,
                     sess_publishers=sessionPubs,
                 ))
+        return translation_units
 
-    def buildProject(self, project_name: str):
+    def buildProject(self, project_name: str) -> list[TranslationUnit]:
         """Build the unit dictionary by querying Joern for the given project.
         
         Args:
@@ -104,5 +105,6 @@ class Builder:
         logger.debug(f"Starting Joern analysis for project '{project_name}'")
         self.api.open_project(project_name)        
         logger.debug("Retrieving publisher/subscriber information from Joern")
-        self.buildTranslationUnitStructs()
+        data = self.buildTranslationUnitStructs()
         logger.debug("Joern analysis complete, returning unit data")
+        return data

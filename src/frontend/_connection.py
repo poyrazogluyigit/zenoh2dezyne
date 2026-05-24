@@ -20,8 +20,7 @@ class Connection:
         self.proc = None
         self.joern_server = joern_server
         self.session = requests.Session()
-        atexit.register(self._stop)
-        self._start()
+        self.start()
 
     def sendQuery(self, query: str):
         logger.debug(f"Sending query to Joern: {query[:100]}...")
@@ -33,7 +32,7 @@ class Connection:
         logger.debug(f"Received response from Joern: {response.text[:100]}...")   
         return response.json().get("stdout", "")
 
-    def _start(self, timeout: int = 60):
+    def start(self, timeout: int = 60):
         """Start the Joern Server process and wait for it to be ready."""
         logger.debug("Starting Joern server process...")
         self.proc = Popen(['joern', '--server'], 
@@ -58,7 +57,7 @@ class Connection:
                     raise RuntimeError("Joern server failed to start within the timeout.")
                 time.sleep(1)
 
-    def _stop(self):
+    def stop(self):
         """Terminate the Joern process."""
         if self.proc:
             logger.debug("Terminating Joern process.")

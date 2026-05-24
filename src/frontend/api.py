@@ -70,6 +70,12 @@ class JoernQueryAPI:
         >>> api.open_project("my-project")
         >>> publishers = api.get_publishers()
     """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
     
     def __init__(self, joern_server: str = ""):
         """Initialize the Joern query API with a connection.

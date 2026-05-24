@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 @dataclass
 class DezyneStateVar:
@@ -31,7 +30,7 @@ class DezyneAction:
 
 @dataclass
 class DezyneBehaviorStatement:
-    lhs: Union[DezyneGuard, DezyneTrigger]
+    lhs: DezyneGuard | DezyneTrigger
     rhs: list[str] = field(default_factory=list)
 
 @dataclass
@@ -68,7 +67,7 @@ class DezyneComponent:
     name: str
     provides: list[DezyneInterface] = field(default_factory=list)
     requires: list[DezyneInterface] = field(default_factory=list)
-    behavior: Optional[str] = None
+    behavior: str | None = None
 
 @dataclass
 class DezyneFile:

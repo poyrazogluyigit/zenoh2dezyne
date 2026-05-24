@@ -4,19 +4,18 @@ from graphutils import JoernCFG
 
 @dataclass
 class CallbackThread:
-    cfg: JoernCFG
     name: str
     key_expr: str
+    cfg: JoernCFG
 
 
 @dataclass
 class MainThread:
     cfg: JoernCFG
-    _name: str = "main"
 
     @property
     def name(self):
-        return self._name
+        return "main"
 
 @dataclass
 class ExecutionBranch:

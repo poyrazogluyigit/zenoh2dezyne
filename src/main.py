@@ -1,5 +1,6 @@
 import argparse
 import logging
+from frontend import JoernQueryAPI
 from codegen import CodeGenerator
 from builder import Builder
 
@@ -14,10 +15,11 @@ def main():
     logging.debug(f"Parsed arguments: {args}")
 
     logging.debug("Starting code generation process")
-    builder = Builder(joern_server=args.joern_server)
-    builder.buildProject(args.project_name)
-    codegen = CodeGenerator(args.output)
-    codegen.generate(builder.translation_units)
+    with JoernQueryAPI(args.joern_server) as api:
+        builder = Builder(joern_server=args.joern_server, joern_api=api)
+        units = builder.buildProject(args.project_name)
+        codegen = CodeGenerator(args.output)
+        codegen.generate(units)
 
 if __name__ == "__main__":
     main()
