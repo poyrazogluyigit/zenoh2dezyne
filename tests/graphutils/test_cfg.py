@@ -3,10 +3,10 @@ import networkx as nx
 
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from graphutils import JoernCFG, parse_dot_to_graph
-from .mock_data import looping_callback
+from src.graphutils import JoernCFG, parse_dot_to_graph
+from tests.mock_data import looping_callback
 
 
 class TestCFG(unittest.TestCase):

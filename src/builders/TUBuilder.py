@@ -1,11 +1,12 @@
 import logging
-from frontend.api import JoernQueryAPI
-from datatypes._datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
-from graphutils import JoernCFG
+
+from ..frontend.api import JoernQueryAPI
+from ..datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from ..graphutils import JoernCFG
 
 logger = logging.getLogger(__name__)
 
-class Builder:
+class TUBuilder:
     """Builds semantic units from Joern code graph analysis.
     
     Orchestrates queries to Joern to extract publisher/subscriber information
@@ -23,16 +24,16 @@ class Builder:
         self.translation_units = []
 
     
-    def getSourceFiles(self) -> list[str]:
+    def _getSourceFiles(self) -> list[str]:
         return self.api.get_files()
     
 
-    def getMainCFG(self, file_name: str) -> JoernCFG:
+    def _getMainCFG(self, file_name: str) -> JoernCFG:
         main = self.api.get_cfg_as_dot(file_name, "main")[0]
         return JoernCFG(main)
 
 
-    def getSubscriberInfo(self, file_name: str) -> list[CallbackThread]:
+    def _getSubscriberInfo(self, file_name: str) -> list[CallbackThread]:
         '''Returns a list of CallbackNodes in a given file name.'''
         subscriberData = self.api.get_callback_control_flows(file_name)
         callbackNodes = []
@@ -45,38 +46,21 @@ class Builder:
             ))
         return callbackNodes
     
-    def getPublishers(self, file_name: str) -> list[VarPublisher]:
+    def _getPublishers(self, file_name: str) -> list[VarPublisher]:
         return [
             VarPublisher(key, value) 
             for item in self.api.get_var_publishers(file_name) 
             for key, value in item.items()
         ]
     
-    def getSessionPuts(self, file_name: str) -> list[SessPublisher]:
+    def _getSessionPuts(self, file_name: str) -> list[SessPublisher]:
         return [
             SessPublisher(key, value) 
             for item in self.api.get_session_variables(file_name) 
             for key, value in item.items()
         ]
 
-    
-    '''
-    0. Projedeki butun isimli dosyalari bul
-    Her dosya icin:
-        1. O dosyadaki subscriberlari bul
-        2. Bu subscriberlarin callback fonksiyonlarinin CFGlerini ve keyexprlarini dondur
-            1 ve 2 tek bir query olarak donuyor
-        3. Bu dosyanin main CFGsini dondur
-        4. Bu dosyadaki publishable'lari bul
-            4.1 bu dosyadaki publisher'lari (degisken, topic) olarak dondur
-            4.2 bu dosyadaki session degiskenlerini (degisken, [topic list]) olarak dondur
-        5. Her CFG'yi publishablelara gore prunela
-            control flow nodelari kalacak
-            put nodelari kalacak
-            bir tam ifadenin subnodelari gidecek
-        6. Son CFG'leri TranslationUnit icerisinde bir araya getir
-    '''
-    def buildTranslationUnitStructs(self) -> list[TranslationUnit]:
+    def build(self) -> list[TranslationUnit]:
         translation_units = []
         for filename in self.getSourceFiles():
             subs = self.getSubscriberInfo(filename)
@@ -92,19 +76,3 @@ class Builder:
                     sess_publishers=sessionPubs,
                 ))
         return translation_units
-
-    def buildProject(self, project_name: str) -> list[TranslationUnit]:
-        """Build the unit dictionary by querying Joern for the given project.
-        
-        Args:
-            project_name: Name of the project to analyze
-            
-        Returns:
-            Dictionary mapping file names to Unit objects
-        """
-        logger.debug(f"Starting Joern analysis for project '{project_name}'")
-        self.api.open_project(project_name)        
-        logger.debug("Retrieving publisher/subscriber information from Joern")
-        data = self.buildTranslationUnitStructs()
-        logger.debug("Joern analysis complete, returning unit data")
-        return data

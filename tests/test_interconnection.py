@@ -3,7 +3,7 @@ import networkx as nx
 
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[2]))
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from tests.interconnect_test_data import mock_unit_A, mock_unit_B
 
@@ -29,6 +29,17 @@ class TestInterconnection(unittest.TestCase):
         self.assertEqual(self.builder._get_in_topics_of(mock_unit_B), {"example/A_to_B"})
         self.assertEqual(self.builder._get_out_topics_of(mock_unit_B), {"example/B_to_A"})
 
+    def test_get_edges(self):
+        edges = self.builder._get_edges()
+
+        self.assertTrue(all(isinstance(edge, tuple) and len(edge) == 3 for edge in edges))
+
+        expected_edges = [
+            ("example/A_to_B", mock_unit_A, mock_unit_B),
+            ("example/B_to_A", mock_unit_B, mock_unit_A),
+        ]
+        self.assertEqual(edges, expected_edges)
+
     def test_interconnection_graph(self):
         graph = self.builder.build()
 
@@ -40,12 +51,12 @@ class TestInterconnection(unittest.TestCase):
 
         idx_a = self.data.index(mock_unit_A)
         idx_b = self.data.index(mock_unit_B)
-        expected_edges = {
+        expected_edges = [
             (idx_a, idx_b, "example/A_to_B"),
             (idx_b, idx_a, "example/B_to_A"),
-        }
-        actual_edges = {
+        ]
+        actual_edges = [
             (src, sink, key)
-            for src, sink, key in graph.edges(key=True)
-        }
+            for src, sink, key in graph.edges(keys=True)
+        ]
         self.assertEqual(actual_edges, expected_edges)

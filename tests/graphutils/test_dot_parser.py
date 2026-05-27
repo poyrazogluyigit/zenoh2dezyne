@@ -3,9 +3,9 @@ import networkx as nx
 
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from graphutils import parse_dot_to_graph
+from src.graphutils import parse_dot_to_graph
 
 
 class TestDotParser(unittest.TestCase):

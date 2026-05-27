@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from graphutils import JoernCFG
+from ..graphutils import JoernCFG
 
 
 @dataclass

@@ -1,26 +1,8 @@
 """DOT parsing utilities for Joern CFGs."""
-from dataclasses import field, dataclass
 import networkx as nx
 
 from .dot_parser import parse_dot_to_graph
 from ._parse_html import _prettify_labels
-
-# TODO get rid of this
-@dataclass
-class CFGNode:
-    id: int = -1
-    node_type: str = ''
-    code: str = ''
-    predecessors: list[int] = field(default_factory=list)
-    successors: list[int] = field(default_factory=list)
-
-    @property
-    def is_put(self):
-        return self.node_type == "put"
-    
-    @property
-    def is_method_return(self):
-        return self.node_type == "METHOD_RETURN"
 
 class JoernCFG:
     def __init__(self, raw_dot: str):
@@ -36,7 +18,6 @@ class JoernCFG:
             # reset source after cleaning node IDs
             self.source = 1
             self.num_nodes = self.graph.number_of_nodes()
-            self._construct_cfg_nodes()
 
     def get_successors(self, node_id: int) -> list[int]:
         """Returns a list of successor node IDs for the given node ID."""
@@ -52,32 +33,6 @@ class JoernCFG:
         else:
             raise ValueError(f"Node ID {node_id} not found in CFG")
         
-    
-
-    def _construct_cfg_nodes(self):
-        """Constructs CFGNode objects for each node in the graph and stores them in a dictionary."""
-        self.cfg_nodes = []
-        for node_id in range(1, self.num_nodes + 1):
-            data = self.graph.nodes[node_id]
-            node = CFGNode(
-                id=node_id,
-                node_type=data.get('node_type', ''),
-                label=data.get('code', '')
-            )
-            self.cfg_nodes.append(node)
-
-        for node_id in range(1, self.num_nodes + 1):
-            current_node = self.cfg_nodes[node_id - 1]
-            
-            current_node.predecessors = [
-                self.cfg_nodes[pred_id - 1] 
-                for pred_id in self.graph.predecessors(node_id)
-            ]
-            
-            current_node.successors = [
-                self.cfg_nodes[succ_id - 1] 
-                for succ_id in self.graph.successors(node_id)
-            ]
 
     def _find_method_entry(self) -> int:
         """Finds the entry node of the CFG, which is typically the METHOD type node.

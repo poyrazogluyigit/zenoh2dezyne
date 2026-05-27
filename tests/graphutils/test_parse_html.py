@@ -2,9 +2,9 @@ import unittest
 
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from graphutils._parse_html import _clean_label, _prettify_labels
+from src.graphutils._parse_html import _clean_label, _prettify_labels
 
 
 class TestParseHtml(unittest.TestCase):

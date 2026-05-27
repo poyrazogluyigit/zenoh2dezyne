@@ -1,6 +1,6 @@
 import logging
-from graphutils import JoernCFG
 
+from ..graphutils import JoernCFG
 from ..datatypes import TranslationUnit
 from ._behavior import _generate_unit_model, _generate_stepper, _generate_network_elt, _generate_top_model
 
