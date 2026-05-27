@@ -26,8 +26,8 @@ class IGNode:
 
 
 class IGBuilder:
-    def __init__(self, tu_builder: TUBuilder):
-        self.translation_units = tu_builder.build()
+    def __init__(self, translation_units: list[TranslationUnit]):
+        self.translation_units = translation_units
 
     # FIXME very unoptimized
     def build(self) -> nx.MultiDiGraph:

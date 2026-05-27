@@ -18,9 +18,9 @@ def main():
     logging.debug("Starting code generation process")
     with JoernQueryAPI(args.joern_server) as api:
         builder = Builder(api)
-        units = builder.buildProject(args.project_name)
+        graph = builder.buildProject(args.project_name)
         codegen = CodeGenerator(args.output)
-        codegen.generate(units)
+        codegen.generate(graph)
 
 if __name__ == "__main__":
     main()
