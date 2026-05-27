@@ -1,5 +1,4 @@
 import unittest
-from src.graphutils import JoernCFG
 from src.datatypes._structs import StateMachine, State, OutEvent, DeferTo, ChangeStateTo
 
 from src.codegen._behavior import _generate_state_change, _generate_from_content, _generate_behavior_for_cfg, _generate_behavior
