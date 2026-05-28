@@ -41,7 +41,7 @@ class TestCFG(unittest.TestCase):
 
     def test_cfg_labeling(self):
         cfg = self._make_cfg(looping_callback)
-        cfg._prettify_labels()
+        cfg._clean_node_data()
 
         self.assertIsNone(cfg.error)
         self.assertIsNotNone(cfg.graph)
@@ -52,7 +52,7 @@ class TestCFG(unittest.TestCase):
 
     def test_cfg_entry_node(self):
         cfg = self._make_cfg(looping_callback)
-        cfg._prettify_labels()
+        cfg._clean_node_data()
 
         self.assertIsNone(cfg.error)
         self.assertIsNotNone(cfg.graph)
@@ -63,13 +63,7 @@ class TestCFG(unittest.TestCase):
         self.assertEqual(cfg.graph.nodes[entry].get("node_type"), "METHOD")
 
     def test_proper_cfg(self):
-        cfg = self._make_cfg(looping_callback)
-        cfg._prettify_labels()
-        cfg.source = self._find_node_id_by_type(cfg.graph, "METHOD")
-        self.assertIsNotNone(cfg.source)
-        cfg._clean_node_ids()
-        cfg.num_nodes = cfg.graph.number_of_nodes()
-        cfg._construct_cfg_nodes()
+        cfg = JoernCFG(looping_callback)
 
         self.assertIsNone(cfg.error)
         self.assertIsNotNone(cfg.graph)

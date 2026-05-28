@@ -9,19 +9,11 @@ from tests.interconnect_test_data import mock_unit_A, mock_unit_B
 
 from src.builders.IGBuilder import IGBuilder
 
-class _StubTUBuilder:
-    def __init__(self, units):
-        self._units = units
-
-    def build(self):
-        return self._units
-
-
 class TestInterconnection(unittest.TestCase):
 
     def setUp(self):
         self.data = [mock_unit_A, mock_unit_B]
-        self.builder = IGBuilder(_StubTUBuilder(self.data))
+        self.builder = IGBuilder(self.data)
 
     def test_in_out_topics(self):
         self.assertEqual(self.builder._get_in_topics_of(mock_unit_A), {"example/B_to_A"})
@@ -46,6 +38,6 @@ class TestInterconnection(unittest.TestCase):
         }
         actual_edges = {
             (src, sink, key)
-            for src, sink, key in graph.edges(key=True)
+            for src, sink, key in graph.edges(keys=True)
         }
         self.assertEqual(actual_edges, expected_edges)

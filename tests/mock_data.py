@@ -1,5 +1,5 @@
 from src.graphutils import JoernCFG
-from src.datatypes import TranslationUnit, VarPublisher, CallbackThread, SessPublisher
+from src.datatypes import TranslationUnit, VarPublisher, CallbackThread, MainThread, SessPublisher
 
 empty_callback = '''digraph \"C_callback\" {  \nnode [shape=\"rect\"];  \n
 \"141733920768\" [label = <RETURN, 5<BR/>return;> ]\n\"107374182402\" [label = <METHOD, 4<BR/>C_callback> ]\n
@@ -41,11 +41,26 @@ put_callback = '''digraph \"callback\" {  \nnode [shape=\"rect\"];  \n
 \"30064771083\" -> \"30064771087\" \n}\n
 '''
 
+main_flow = '''digraph "main" {
+node [shape="rect"];
+"30064771072" [label = <&lt;operator&gt;.assignment, 6<BR/>session = zenoh::Session::open(zenoh::Config::c...> ]
+"30064771080" [label = <put, 14<BR/>A_pub.put(&quot;example-payload&quot;)> ]
+"30064771082" [label = <put, 16<BR/>session.put(&quot;example/topic/session_out&quot;, &quot;example-payload&quot;)> ]
+"107374182400" [label = <METHOD, 4<BR/>main> ]
+"124554051584" [label = <METHOD_RETURN, 4<BR/>int> ]
+  "30064771072" -> "124554051584"
+  "30064771072" -> "30064771080"
+  "30064771080" -> "30064771082"
+  "30064771082" -> "124554051584"
+  "30064771082" -> "30064771080"
+  "107374182400" -> "30064771072"
+}'''
+
 # generate a mock translation unit
 mock_translation_unit = TranslationUnit(
     file_name="mock_file.cpp",
-    main=None,
+    main=MainThread(cfg=JoernCFG(main_flow)),
     callbacks=[CallbackThread(name="callback", key_expr="example/topic/in", cfg=JoernCFG(put_callback))],
     var_publishers=[VarPublisher(var="A_pub", key_expr="example/topic/var_out")],
-    sess_publishers=[SessPublisher(sess="session", key_exprs=["example/topic/session_out"])]
+    sess_publishers=[SessPublisher(var="session", key_exprs=["example/topic/session_out"])]
 )
