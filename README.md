@@ -156,19 +156,18 @@ every other file as `import Step.dzn;`.
 The codegen makes the following deliberate choices, all concentrated in
 [`src/codegen/codegen.py`](src/codegen/codegen.py):
 
-- **One interface per unit, not per thread.** Threads coexist inside the
-  interface and are dispatched by `CurrentExecutionThread`.
+- **One interface per unit**Control flows for main and Zenoh subscriber callbacks are grouped under a state machine in a single
+  interface and are dispatched by `CurrentExecutionThread`. Each state machine is modelled to be driven by some external stepper component.
+- **Single vs per-unit stepper** is a runtime flag (`--single-stepper`); default behavior is separate steppers per unit.
 - **DeferTo(target)**:
   - `target == current_thread` → empty block (we're already there).
   - otherwise → assign `thread = target` and reset the current thread's
     state variable to 1 so the next re-entry restarts it.
 - **Multi-successor transitions** are emitted as sibling `[s == k]` guards
   (Dezyne nondeterministic choice). Each branch fires a unique out-event
-  (`<thread>_branch_<src>_to_<tgt>`) so the verifier can observe the choice.
+  (`<thread>_branch_<src>_to_<tgt>`) so the verifier can observe the choice. This is done to circumvent Dezyne's limitations on non-observable non-determinism.
 - **Topic mangling** normalises Zenoh key expressions (e.g. `basic/B/A` → `basic_B_A`)
   and strips surrounding quotes that Joern emits on string literals.
-- **Single vs per-unit stepper** is a runtime flag (`--single-stepper`);
-  default is one `Step` per unit.
 
 ## Project layout
 
