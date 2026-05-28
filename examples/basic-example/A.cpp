@@ -12,5 +12,7 @@ int main() {
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(50ms);
         B_pub.put("example-payload");
+        std::this_thread::sleep_for(50ms);
+        session.put("basic/B/A", "example-payload");
     }
 }

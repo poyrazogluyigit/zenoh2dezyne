@@ -35,12 +35,6 @@ interface IB {
                 // loop condition ignored here
                 [state_a_callback == 3] { ACallback_loop_taken; state_a_callback = 4; }
                 [state_a_callback == 3] { ACallback_loop_not_taken; state_a_callback = 6;}
-                /*
-                    Looplar uzerine bazi notlar:
-                        su anda model loop hic calismayabilir ya da
-                        sonsuza kadar calisabilir kosullarini da kabul ediyor
-                        daha iyi refine etmek icin kontrol degiskenini halletmek gerekecek
-                */
                 [state_a_callback == 4] { basic_C_B; state_a_callback = 5; }
                 [state_a_callback == 5] state_a_callback = 3;
                 [state_a_callback == 6] {basic_A_B; state_a_callback = 7;}

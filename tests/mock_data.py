@@ -1,0 +1,66 @@
+from src.graphutils import JoernCFG
+from src.datatypes import TranslationUnit, VarPublisher, CallbackThread, MainThread, SessPublisher
+
+empty_callback = '''digraph \"C_callback\" {  \nnode [shape=\"rect\"];  \n
+\"141733920768\" [label = <RETURN, 5<BR/>return;> ]\n\"107374182402\" [label = <METHOD, 4<BR/>C_callback> ]\n
+\"124554051586\" [label = <METHOD_RETURN, 4<BR/>void> ]\n  \"141733920768\" -> \"124554051586\" \n 
+\"107374182402\" -> \"141733920768\" \n}\n'''
+
+branching_callback = '''digraph \"&lt;lambda&gt;0\" {  \nnode [shape=\"rect\"];  \n
+\"30064771110\" [label = <&lt;operator&gt;.assignment, 16<BR/>pubSelect = !pubSelect> ]\n
+\"30064771107\" [label = <&lt;operator&gt;.notEquals, 14<BR/>pubSelect != 0> ]\n
+\"30064771111\" [label = <&lt;operator&gt;.logicalNot, 16<BR/>!pubSelect> ]\n
+\"30064771108\" [label = <put, 14<BR/>A_pub.put(&quot;example payload to A&quot;)> ]\n
+\"30064771109\" [label = <put, 15<BR/>B_pub.put(&quot;example payload to B&quot;)> ]\n
+\"107374182406\" [label = <METHOD, 13<BR/>&lt;lambda&gt;0> ]\n
+\"124554051590\" [label = <METHOD_RETURN, 13<BR/>void> ]\n 
+ \"30064771110\" -> \"124554051590\" \n  \"30064771107\" -> \"30064771108\" \n  \"30064771107\" -> \"30064771109\" \n 
+\"30064771111\" -> \"30064771110\" \n  \"30064771108\" -> \"30064771111\" \n  \"30064771109\" -> \"30064771111\" \n  
+\"107374182406\" -> \"30064771107\" \n}\n'''
+
+looping_callback = '''digraph \"&lt;lambda&gt;0\" {  \nnode [shape=\"rect\"];  \n
+\"30064771087\" [label = <put, 19<BR/>A_pub.put(&quot;example payload to A&quot;)> ]\n
+\"30064771083\" [label = <&lt;operator&gt;.assignment, 16<BR/>i = 0> ]\n
+\"30064771084\" [label = <&lt;operator&gt;.lessThan, 16<BR/>i &lt; 5> ]\n
+\"30064771085\" [label = <&lt;operator&gt;.postIncrement, 16<BR/>i++> ]\n
+\"30064771086\" [label = <put, 17<BR/>C_pub.put(&quot;example payload to C&quot;)> ]\n
+\"107374182404\" [label = <METHOD, 15<BR/>&lt;lambda&gt;0> ]\n
+\"124554051587\" [label = <METHOD_RETURN, 15<BR/>void> ]\n 
+\"30064771087\" -> \"124554051587\" \n  \"30064771083\" -> \"30064771084\" \n  
+\"30064771084\" -> \"30064771086\" \n  \"30064771084\" -> \"30064771087\" \n  
+\"30064771085\" -> \"30064771084\" \n  \"30064771086\" -> \"30064771085\" \n  
+\"107374182404\" -> \"30064771083\" \n}\n'''
+
+put_callback = '''digraph \"callback\" {  \nnode [shape=\"rect\"];  \n
+\"30064771087\" [label = <put, 19<BR/>A_pub.put(&quot;example payload to A&quot;)> ]\n
+\"30064771088\" [label = <put, 19<BR/>session.put(&quot;example/topic/session_out&quot;, &quot;example payload to session&quot;)> ]\n
+\"30064771083\" [label = <METHOD, 16<BR/>&lt;callback&gt;> ]\n
+\"124554051587\" [label = <METHOD_RETURN, 16<BR/>void> ]\n 
+\"30064771087\" -> \"30064771088\" \n  
+\"30064771088\" -> \"124554051587\" \n  
+\"30064771083\" -> \"30064771087\" \n}\n
+'''
+
+main_flow = '''digraph "main" {
+node [shape="rect"];
+"30064771072" [label = <&lt;operator&gt;.assignment, 6<BR/>session = zenoh::Session::open(zenoh::Config::c...> ]
+"30064771080" [label = <put, 14<BR/>A_pub.put(&quot;example-payload&quot;)> ]
+"30064771082" [label = <put, 16<BR/>session.put(&quot;example/topic/session_out&quot;, &quot;example-payload&quot;)> ]
+"107374182400" [label = <METHOD, 4<BR/>main> ]
+"124554051584" [label = <METHOD_RETURN, 4<BR/>int> ]
+  "30064771072" -> "124554051584"
+  "30064771072" -> "30064771080"
+  "30064771080" -> "30064771082"
+  "30064771082" -> "124554051584"
+  "30064771082" -> "30064771080"
+  "107374182400" -> "30064771072"
+}'''
+
+# generate a mock translation unit
+mock_translation_unit = TranslationUnit(
+    file_name="mock_file.cpp",
+    main_thread=MainThread(cfg=JoernCFG(main_flow)),
+    callback_threads=[CallbackThread(name="callback", key_expr="example/topic/in", cfg=JoernCFG(put_callback))],
+    var_publishers=[VarPublisher(var="A_pub", key_expr="example/topic/var_out")],
+    sess_publishers=[SessPublisher(var="session", key_exprs=["example/topic/session_out"])]
+)

@@ -9,40 +9,12 @@ import logging
 import json
 import re
 from functools import wraps
+from typing import Any
 
 from ._connection import Connection
+from ._joern_parsers import _parse_joern_json
 
 logger = logging.getLogger(__name__)
-
-
-def parse_joern_json(response: str) -> object:
-    """Parse Joern's JSON response, stripping ANSI codes and extracting JSON.
-    
-    Args:
-        response: Raw response from Joern server
-        
-    Returns:
-        Parsed JSON object
-        
-    Raises:
-        ValueError: If response cannot be parsed as valid JSON
-    """
-    clean_resp = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', response)
-    rhs = clean_resp.split("=", 1)[-1].strip() if "=" in clean_resp else clean_resp.strip()
-
-    if rhs.startswith('"""') and rhs.endswith('"""'):
-        rhs = rhs[3:-3].strip()
-    elif rhs.startswith('"') and rhs.endswith('"'):
-        rhs = rhs[1:-1].encode("utf-8").decode("unicode_escape").strip()
-
-    match = re.search(r'([\[\{].*[\]\}])', rhs, re.DOTALL)
-    if match:
-        rhs = match.group(1)
-
-    try:
-        return json.loads(rhs)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Failed to parse Joern JSON: {exc}") from exc
 
 
 class JoernQueryAPI:
@@ -60,6 +32,12 @@ class JoernQueryAPI:
         >>> api.open_project("my-project")
         >>> publishers = api.get_publishers()
     """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
     
     def __init__(self, joern_server: str = ""):
         """Initialize the Joern query API with a connection.
@@ -83,22 +61,9 @@ class JoernQueryAPI:
         """
         return self._connection.sendQuery(query)
 
-    @staticmethod
-    def _query_decorator(func):
-        """Decorator for executing a raw Joern query.
-        
-        Decorated function should return a Joern query string.
-        The decorator executes the query and returns the raw response.
-        """
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            result = func(self, *args, **kwargs)
-            query_res = self._send_query(result + "")
-            return query_res
-        return wrapper
     
     @staticmethod
-    def _json_query_decorator(func):
+    def _query(func):
         """Decorator for executing a Joern query that returns JSON.
         
         Decorated function should return a Joern query string.
@@ -109,100 +74,94 @@ class JoernQueryAPI:
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
             query_res = self._send_query(result + ".toJson")
-            return parse_joern_json(query_res)
+            return _parse_joern_json(query_res)
         return wrapper
 
-    @_query_decorator
-    def open_project(self, project_name: str):
+    def open_project(self, project_name: str) -> str:
         """Load a project by name into the Joern workspace.
-        
-        Args:
-            project_name: Name of the project to open
-            
-        Returns:
-            Response from Joern
+
+        ``open()`` is invoked for its side effect; it returns a ``Project``
+        object which can't be JSON-serialized through ``.toJson`` (Joern's
+        reflection-based serializer trips on the underlying ``UnixPath`` field
+        under Java 17+'s module access rules). Send the query raw and let the
+        caller ignore the response.
         """
         logger.debug(f"Opening Joern project: {project_name}")
-        return f'open("{project_name}")'
+        return self._send_query(f'open("{project_name}")')
     
-    @_json_query_decorator
-    def get_publishers(self) -> list[dict]:
-        """Get all publisher declarations with containing files and topics.
-        
-        Returns publisher information grouped by file name, with each publisher's
-        keyExpr (topic).
-        
-        Returns:
-            List of dicts: [{fileName: [{keyExpr: str}, ...]}, ...]
-        """
-        return '''cpg.call.name(\"declare_publisher\").l
-        .groupBy(_.file.name.headOption.getOrElse(\"unknown\"))
-        .map { case (fileName, calls) =>
-        fileName -> calls.map(c => Map(
-        "keyExpr" -> c.argument(1).code
-        ))
-        }'''
+    @_query
+    def import_code(self, input_path: str, project_name: str):
+        logger.debug(f"Importing code from {input_path}")
+        return f'importCode(inputPath="{input_path}", projectName="{project_name}")'
+    
+    @_query
+    def get_var_publishers(self, file_name: str) -> list[dict]:
+        """Get (variable name, topic) info for all publishers in a file."""
+        return f'''cpg.call.name("declare_publisher")
+        .where(_.file.name("{file_name}"))
+        .map {{ c => 
+        (c.inAssignment.target.code.head, c.argument(1).code) 
+        }}'''
+    
+    @_query
+    def get_session_variables(self, file_name: str):
+        return f'''cpg.call.code(".*zenoh::Session::open\\\\(.*")
+        .where(_.file.name("{file_name}"))
+        .inAssignment.target.code.map {{ 
+            sessionVar =>
+            val putArgs = cpg.call.name("put").where(_.argument(0).codeExact(sessionVar)).argument(1).code.l
+            (sessionVar, putArgs)
+        }}.toMap'''
+    
 
-    @_json_query_decorator
-    def get_subscribers(self) -> list[dict]:
-        """Get all subscriber declarations with files, callbacks, and topics.
-        
-        Returns subscriber information grouped by file name, with each subscriber's
-        keyExpr (topic) and callback function name.
-        
-        Returns:
-            List of dicts: [{fileName: [{keyExpr: str, callback: str}, ...]}, ...]
-        """
-        return '''cpg.call.name(\"declare_subscriber\").l
-        .groupBy(_.file.name.headOption.getOrElse(\"unknown\"))
-        .map { case (fileName, calls) =>
-        fileName -> calls.map(c => Map(
-        "keyExpr" -> c.argument(1).code,
-        "callback" -> c.argument(2).code
-        ))
-        }'''
+    @_query
+    def get_cfg_as_dot(self, file_name: str, function_name: str):
+        logger.debug(f"Retrieved CFG for {function_name} from {file_name}")
+        return f"cpg.method.filename(\"{file_name}\").name(\"{function_name}\").dotCfg"
 
-    @_json_query_decorator
-    def get_callback_control_flows(self, file_name: str, callback_name: str) -> list[dict]:
-        """Get control flow information for a callback's put() statements.
-        
-        For each put() call in the specified callback, retrieves:
-        - The keyExpr of the publisher being published to
-        - The control flow statements (if/else) wrapping the put call
-        
-        Note: May not correctly handle session.put() calls.
-        
-        Args:
-            file_name: Name of the file containing the callback
-            callback_name: Name of the callback function
-            
-        Returns:
-            List of dicts with keys 'keyExpr' and 'controlFlow'
-        """
-        return f'''cpg.method("{callback_name}").call.name("put").map {{ v =>
-        val recvName = v.receiver.isIdentifier.name.headOption.getOrElse("")
-        val fname    = "{file_name}"
-        
-        val keyExpr = cpg.call
-            .name("declare_publisher")
-            .where(_.file.nameExact(fname))
-            .where(_.inAssignment.argument(1).isIdentifier.nameExact(recvName))
-            .argument(1)
-            .code
-            .headOption
-            .getOrElse("")
-        
-        val controlFlow =
-            v.inAst.isControlStructure
-            .map(cs => (cs.controlStructureType, cs.condition.code.headOption.getOrElse("")))
-            .l
-        
-        Map(
-            "keyExpr"     -> keyExpr,
-            "controlFlow" -> controlFlow
-        )
-        }}
-        '''
+    @_query
+    def get_files(self):
+        return "cpg.file.name(\".*\\\\.cpp\").map(_.name)"
+
+    @_query
+    def get_callback_control_flows(self, file_name: str) -> list[dict]:
+        return f"""cpg.call("declare_subscriber").where(_.file.name("{file_name}")).map {{ subCall =>
+        val topic = subCall.argument(1).code
+        val cbArgCode = subCall.argument(2).code
+      
+        // Clean up the variable name (e.g., from "&A_callback" to "A_callback")
+        val cbVarName = cbArgCode.replace("&", "").trim
+      
+        // Find the function with the name equal to cbVarName and get its dotCfg
+        // If there is no dotCfg, find the assignment where LHS is this variable, get its RHS, 
+        // extract the MethodRef, trace it to the Method, and generate the CFG.
+      
+                val resolvedMethods = {{
+                    val directMethods = cpg.method.name(cbVarName).l
+                    if (directMethods.nonEmpty) directMethods
+                    else {{
+                        cpg.assignment
+                        .where(_.argument(1).codeExact(cbVarName))
+                        .argument(2)
+                        .ast.isMethodRef
+                        .filter(_.refOut.nonEmpty)
+                        .referencedMethod
+                        .l
+                    }}
+                }}
+
+                val resolved = resolvedMethods.headOption
+                val callbackFullName = resolved.map(_.fullName).getOrElse(cbVarName)
+                val dotGraph = resolved
+                    .map(_.dotCfg.headOption.getOrElse("CFG resolution failed"))
+                    .getOrElse("CFG resolution failed")
+      
+                Map(
+                        "topic"     -> topic,
+                        "callback"  -> cbVarName,
+                        "dotGraph"  -> dotGraph
+                )
+            }}"""
     
     def close(self) -> None:
         """Close the connection to Joern server.
@@ -211,4 +170,4 @@ class JoernQueryAPI:
         explicitly if needed.
         """
         logger.debug("Closing Joern connection")
-        self._connection._stop()
+        self._connection.stop()

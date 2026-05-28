@@ -1,20 +1,28 @@
 import argparse
 import logging
 
+from .frontend import JoernQueryAPI
+from .codegen import CodeGenerator
+from .builders import Builder
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Dezyne code from a Zenoh C++ applications using Joern")
     parser.add_argument("project_name", help="The name of the project to analyze")
     parser.add_argument("--output", "-o", help="The output directory for generated files", default="generate")
     parser.add_argument("--logging", "-l", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)", default="WARNING")
     parser.add_argument("--joern-server", help="The URL of the running Joern server (e.g., http://localhost:8080)", default="http://localhost:8080")
+    parser.add_argument("--single-stepper", action="store_true", help="Generate one shared Step component (default: one Step per unit)")
     args = parser.parse_args()
     logging.basicConfig(level=getattr(logging, args.logging.upper(), None), format='%(asctime)s - %(levelname)s - %(message)s')
     logging.debug(f"Parsed arguments: {args}")
 
-    from codegen import CodeGenerator
     logging.debug("Starting code generation process")
-    codegen = CodeGenerator(args.project_name, args.output, args.joern_server)
-    codegen.generate_code()
+    with JoernQueryAPI(args.joern_server) as api:
+        builder = Builder(api)
+        graph = builder.buildProject(args.project_name)
+        codegen = CodeGenerator(args.output)
+        codegen.generate(graph, single_stepper=args.single_stepper)
+        codegen.printToOutput()
 
 if __name__ == "__main__":
     main()

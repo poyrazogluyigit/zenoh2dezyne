@@ -1,2 +1,0 @@
-- In the first stage, all key expressions are assumed to be static
-- It is assumed that each executable operates a single session

@@ -7,6 +7,6 @@ build/
 .scala-build/
 .venv/
 joern_includes/
-src/**/__pycache__
+**/__pycache__
 generate/
 .github
