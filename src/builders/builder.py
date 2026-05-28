@@ -37,7 +37,7 @@ class Builder:
         """
         logger.debug(f"Starting Joern analysis for project '{project_name}'")
         self.api.open_project(project_name)        
-        tu_builder = TUBuilder(self.joern_api)
+        tu_builder = TUBuilder(self.api)
         logger.debug("Building Translation Unit structures")
         translation_units = tu_builder.build()
         logger.debug("Building interconnection graph")

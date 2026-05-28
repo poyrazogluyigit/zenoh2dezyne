@@ -15,7 +15,8 @@ class ChangeStateTo:
 @dataclass
 class State:
     value: int
-    statements: list[str] = field(default_factory=list)
+    statements: list[OutEvent | DeferTo] = field(default_factory=list)
+    state_changes: list[ChangeStateTo] = field(default_factory=list)
 
 # TODO force ordering of states by increasing state number, also add iterator
 @dataclass

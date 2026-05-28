@@ -79,7 +79,7 @@ class TestCFG(unittest.TestCase):
         cfg = JoernCFG(looping_callback)
 
         for _node in cfg:
-            pass
+            print(_node)  # Just to ensure iteration works without error
 
 
 if __name__ == "__main__":

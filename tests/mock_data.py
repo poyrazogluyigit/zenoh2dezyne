@@ -59,8 +59,8 @@ node [shape="rect"];
 # generate a mock translation unit
 mock_translation_unit = TranslationUnit(
     file_name="mock_file.cpp",
-    main=MainThread(cfg=JoernCFG(main_flow)),
-    callbacks=[CallbackThread(name="callback", key_expr="example/topic/in", cfg=JoernCFG(put_callback))],
+    main_thread=MainThread(cfg=JoernCFG(main_flow)),
+    callback_threads=[CallbackThread(name="callback", key_expr="example/topic/in", cfg=JoernCFG(put_callback))],
     var_publishers=[VarPublisher(var="A_pub", key_expr="example/topic/var_out")],
     sess_publishers=[SessPublisher(var="session", key_exprs=["example/topic/session_out"])]
 )

@@ -39,7 +39,7 @@ class SessPublisher:
 @dataclass
 class TranslationUnit:
     file_name: str
-    main: MainThread
-    callbacks: list[CallbackThread] = field(default_factory=list)
+    main_thread: MainThread
+    callback_threads: list[CallbackThread] = field(default_factory=list)
     var_publishers: list[VarPublisher] = field(default_factory=list)
     sess_publishers: list[SessPublisher] = field(default_factory=list)

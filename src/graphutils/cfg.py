@@ -25,6 +25,20 @@ class JoernCFG:
             return self.graph.nodes[node_id].get("node_type")
         else:
             raise ValueError(f"Node ID {node_id} not found in CFG")
+        
+    def get_data(self, node_id: int) -> dict:
+        """Returns the data dictionary for the given node ID."""
+        if self.graph and node_id in self.graph:
+            return self.graph.nodes[node_id]
+        else:
+            raise ValueError(f"Node ID {node_id} not found in CFG")
+        
+    def get_data(self, node_id: int, key: str):
+        """Returns the value for the specified key in the node's data dictionary."""
+        if self.graph and node_id in self.graph:
+            return self.graph.nodes[node_id].get(key)
+        else:
+            raise ValueError(f"Node ID {node_id} or key {key} not found in CFG")
 
     def get_successors(self, node_id: int) -> list[int]:
         """Returns a list of successor node IDs for the given node ID."""
@@ -55,7 +69,7 @@ class JoernCFG:
         if self.graph:
             ordered_ids = list(nx.dfs_preorder_nodes(self.graph, source=self.source))
             for node_id in ordered_ids:
-                yield self.graph.nodes[node_id]
+                yield node_id
         else:
             return iter([])
         

@@ -3,7 +3,7 @@ import logging
 
 from .frontend import JoernQueryAPI
 from .codegen import CodeGenerator
-from .builders.builder import Builder
+from .builders import Builder
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Dezyne code from a Zenoh C++ applications using Joern")

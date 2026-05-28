@@ -1,0 +1,72 @@
+// pseudocode
+
+File (
+    imports: list[Import]
+    interface: Interface
+    component: Component
+)
+
+Interface (
+    event_decls: list[EventDecl]
+    type_decls: list[TypeDecl]
+    behavior: Behavior
+)
+
+Component(
+    requires: list[Requires]
+    provides: list[Provides]
+    behavior: CBehavior
+    system: System
+)
+
+Behavior (
+    var_defns: list[VarDefn]
+    stmts: list[GuardOrTrigger]
+)
+
+GuardOrTrigger(
+    lhs: Guard | Trigger
+    rhs: Block
+)
+
+Block (
+    stmts: list[Statement]
+)
+
+Statement: Assignment GuardOrTrigger Action
+
+Assignment(
+    var: Variable
+    value: int | str
+)
+
+Action (name)
+Variable (name)
+Guard(
+    var: Variable
+    value: int | str
+)
+
+System (
+    stmts: list[SystemStmts]
+)
+
+SystemStmts: Binding Instantiation
+
+CBehavior (
+    stmts: list[CBehvStmts] 
+)
+Binding (lhs: (Instance, port: str), rhs: (Instance, port: str))
+Instantiation(component: Component, instance: Instance)
+Instance(name)
+
+CBehvStmts: Call CTrigger Requires Provides CBlock
+
+CTrigger (
+    lhs: Call
+    rhs: CBlock
+)
+
+CBlock (list[Call])
+Call (name: str, event: Event)
+Provides/Requires(interface: Interface, name: str)

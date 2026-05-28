@@ -3,7 +3,6 @@ import networkx as nx
 from dataclasses import dataclass, field
 
 from ..datatypes import TranslationUnit
-from .TUBuilder import TUBuilder
 
 # Interconnection generation:
 # Input: A list of translation units
@@ -23,6 +22,30 @@ from .TUBuilder import TUBuilder
 class IGNode:
     id: int
     unit: TranslationUnit
+
+class InterconnectionGraph:
+    graph: nx.MultiDiGraph
+
+    def __init__(self, graph: nx.MultiDiGraph):
+        self.graph = graph
+    
+    def __iter__(self):
+        return iter(self.graph.nodes(data=True))
+    
+    def getSuccessors(self, node_id: int) -> list[int]:
+        """Returns a list of successor node IDs for the given node ID."""
+        if node_id in self.graph:
+            return list(self.graph.successors(node_id))
+        else:
+            raise ValueError(f"Node ID {node_id} not found in Interconnection Graph")
+    
+    def getPredecessors(self, node_id: int) -> list[int]:
+        """Returns a list of predecessor node IDs for the given node ID."""
+        if node_id in self.graph:
+            return list(self.graph.predecessors(node_id))
+        else:
+            raise ValueError(f"Node ID {node_id} not found in Interconnection Graph")
+    
 
 
 class IGBuilder:
@@ -49,6 +72,7 @@ class IGBuilder:
             out_topics += sp.key_exprs
         return set(out_topics)
 
+    # TODO control publishing edges that do not have a corresponding subscriber
     def _get_out_edges_of(self, unit: TranslationUnit) -> list[tuple[str, TranslationUnit, TranslationUnit]]:
         out_edges = []
         unit_out_topics = self._get_out_topics_of(unit)

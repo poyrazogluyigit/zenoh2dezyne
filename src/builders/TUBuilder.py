@@ -70,7 +70,7 @@ class TUBuilder:
             translation_units.append(
                 TranslationUnit(
                     file_name=filename,
-                    main=MainThread(cfg=mainCFG),
+                    main_thread=MainThread(cfg=mainCFG),
                     callbacks=subs, 
                     var_publishers=pubVars,
                     sess_publishers=sessionPubs,

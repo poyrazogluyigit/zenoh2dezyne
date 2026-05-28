@@ -8,6 +8,10 @@ interface IC {
     in void basic_C_A();
     in void basic_C_B();
 
+    out void AB_Callback_branch_taken();
+    out void AB_Callback_branch_not_taken();    
+
+ 
     in void step();
 
     behavior {
@@ -29,9 +33,8 @@ interface IC {
             }
             [cur.ABCallback] {
                 [state_ab_callback == 1] state_ab_callback = 2;
-                // kontrol degiskeni hesaba katildi (no nondet)
-                [state_ab_callback == 2 && pubSelect]  state_ab_callback = 3;
-                [state_ab_callback == 2 && !pubSelect] state_ab_callback = 4;
+                [state_ab_callback == 2]  {state_ab_callback = 3; AB_Callback_branch_taken; }
+                [state_ab_callback == 2]  {state_ab_callback = 4; AB_Callback_branch_not_taken;}
                 [state_ab_callback == 3] { basic_A_C; state_ab_callback = 5; }
                 [state_ab_callback == 4] { basic_B_C; state_ab_callback = 5; }
                 [state_ab_callback == 5] state_ab_callback = 6;
