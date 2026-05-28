@@ -43,7 +43,7 @@ def _generate_network_elt(
     per-unit (or shared) step events."""
     units = [unit_by_id[i] for i in sorted(unit_by_id.keys())]
 
-    imports = [f"{u}.dzn" for u in units] + ["Utils/Step.dzn"]
+    imports = [f"{u}.dzn" for u in units] + ["Step.dzn"]
 
     netctl_iface = Interface(
         name="INetCtl",
@@ -100,7 +100,7 @@ def _generate_top_model(
     units' components, and the steppers, plus the bindings between them."""
     units = [unit_by_id[i] for i in sorted(unit_by_id.keys())]
 
-    imports = [f"{u}.dzn" for u in units] + ["Utils/Step.dzn", "Network.dzn"]
+    imports = [f"{u}.dzn" for u in units] + ["Step.dzn", "Network.dzn"]
 
     instances: list[Instance] = [Instance("Network", "net")]
     instances.extend(Instance(f"C{u}", f"{u}_comp") for u in units)

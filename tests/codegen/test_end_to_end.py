@@ -47,7 +47,9 @@ class TestEndToEnd(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(out, "B.dzn")))
             self.assertTrue(os.path.isfile(os.path.join(out, "Network.dzn")))
             self.assertTrue(os.path.isfile(os.path.join(out, "Top.dzn")))
-            self.assertTrue(os.path.isfile(os.path.join(out, "Utils", "Step.dzn")))
+            # Step.dzn lives alongside the other files (not in a Utils/ subdir).
+            self.assertTrue(os.path.isfile(os.path.join(out, "Step.dzn")))
+            self.assertFalse(os.path.isdir(os.path.join(out, "Utils")))
 
     def test_generate_emits_per_unit_provides(self):
         tu = _make_tu("MyUnit.cpp")

@@ -48,7 +48,7 @@ class TestNetwork(unittest.TestCase):
         self.assertIn("import A.dzn;", code)
         self.assertIn("import B.dzn;", code)
         self.assertIn("import C.dzn;", code)
-        self.assertIn("import Utils/Step.dzn;", code)
+        self.assertIn("import Step.dzn;", code)
 
     def test_netctl_interface(self):
         code = _normalize(_generate_network_elt(self.ig, self.unit_by_id).to_code())

@@ -26,7 +26,7 @@ class TestStateMachinesToCode(unittest.TestCase):
         self.assertIn("interface IA", code)
         self.assertIn("component CA", code)
         self.assertIn("provides IA A_top;", code)
-        self.assertIn("import Utils/Step.dzn;", code)
+        self.assertIn("import Step.dzn;", code)
         # Topic mangling: '/' -> '_'
         self.assertIn("out void basic_B_A();", code)
         self.assertIn("in void step();", code)
@@ -41,7 +41,7 @@ class TestStateMachinesToCode(unittest.TestCase):
         self.assertIn("subint State_main { 1..3 };", code)
         self.assertIn("State_main s_main = 1;", code)
 
-    def test_multi_successor_emits_one_guard_per_successor(self):
+    def test_multi_successor_emits_one_guard_per_successor_with_signals(self):
         sms = {
             "main": StateMachine([
                 State(1, [], [ChangeStateTo(2), ChangeStateTo(3)]),
@@ -51,9 +51,40 @@ class TestStateMachinesToCode(unittest.TestCase):
         }
         _, file = state_machines_to_code("X", sms)
         code = file.to_code()
-        # Two sibling guards for state 1, one transitioning to 2, the other to 3
+        # Branch signal events are declared for each (source, target).
+        self.assertIn("out void main_branch_1_to_2();", code)
+        self.assertIn("out void main_branch_1_to_3();", code)
+        # Two sibling guards for state 1: each fires its branch signal then transitions.
+        self.assertRegex(code, r"\[s_main == 1\]\s*\{\s*main_branch_1_to_2;\s*s_main = 2;\s*\}")
+        self.assertRegex(code, r"\[s_main == 1\]\s*\{\s*main_branch_1_to_3;\s*s_main = 3;\s*\}")
+
+    def test_single_successor_does_not_emit_branch_signal(self):
+        sms = {
+            "main": StateMachine([
+                State(1, [], [ChangeStateTo(2)]),
+                State(2, [], []),
+            ])
+        }
+        _, file = state_machines_to_code("X", sms)
+        code = file.to_code()
+        self.assertNotIn("main_branch_", code)
         self.assertRegex(code, r"\[s_main == 1\]\s*s_main = 2;")
-        self.assertRegex(code, r"\[s_main == 1\]\s*s_main = 3;")
+
+    def test_callback_in_event_declared_and_triggered(self):
+        sms = {
+            "main": StateMachine([State(1, [DeferTo("main")], [])]),
+            "cb": StateMachine([State(1, [DeferTo("main")], [])]),
+        }
+        callback_topics = {"cb": "basic/B/A"}
+        _, file = state_machines_to_code("B", sms, callback_topics)
+        code = file.to_code()
+        # The subscribed topic becomes an in-event declaration.
+        self.assertIn("in void basic_B_A();", code)
+        # And drives a trigger that switches to the callback when on main.
+        self.assertRegex(
+            re.sub(r"\s+", " ", code),
+            r"on basic_B_A: \{ \[thread == main\] \{ thread = cb; s_cb = 1; \} \[otherwise\] \{\} \}",
+        )
 
     def test_terminal_state_emits_empty_block(self):
         sms = {
