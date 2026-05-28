@@ -21,6 +21,7 @@ def main():
         graph = builder.buildProject(args.project_name)
         codegen = CodeGenerator(args.output)
         codegen.generate(graph)
+        codegen.printToOutput()
 
 if __name__ == "__main__":
     main()
