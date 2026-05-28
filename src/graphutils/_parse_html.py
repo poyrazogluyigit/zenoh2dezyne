@@ -21,6 +21,10 @@ def _prettify_labels(nodes):
             nodeType, code = _clean_label(raw_label)
             data['node_type'] = nodeType
             data['code'] = code
+            if nodeType == "put":
+                data['put_target'] = code.split('.')[0]
+                if data['put_target'] == "session":
+                    data['put_topic'] = code.split('"')[1]
             del data['label']
             
 

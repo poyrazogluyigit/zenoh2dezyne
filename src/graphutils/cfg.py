@@ -19,6 +19,13 @@ class JoernCFG:
             self.source = 1
             self.num_nodes = self.graph.number_of_nodes()
 
+    def get_type(self, node_id: int) -> str:
+        """Returns the node type for the given node ID."""
+        if self.graph and node_id in self.graph:
+            return self.graph.nodes[node_id].get("node_type")
+        else:
+            raise ValueError(f"Node ID {node_id} not found in CFG")
+
     def get_successors(self, node_id: int) -> list[int]:
         """Returns a list of successor node IDs for the given node ID."""
         if self.graph and node_id in self.graph:
@@ -48,7 +55,7 @@ class JoernCFG:
         if self.graph:
             ordered_ids = list(nx.dfs_preorder_nodes(self.graph, source=self.source))
             for node_id in ordered_ids:
-                yield self.cfg_nodes[node_id - 1]
+                yield self.graph.nodes[node_id]
         else:
             return iter([])
         
