@@ -97,12 +97,15 @@ def state_machines_to_code(
     unit_name: str,
     state_machines: dict[str, StateMachine],
     callback_topics: dict[str, str] | None = None,
-) -> tuple[str, File]:
+) -> tuple[str, File, list[str]]:
     """Convert per-thread state machines into a single Dezyne File for one translation unit.
 
-    Returns ``(unit_name, file)`` where the file contains an ``interface I<unit_name>``
-    holding all threads dispatched by a ``CurrentExecutionThread`` enum, plus a thin
-    wrapper ``component C<unit_name>`` that ``provides`` that interface.
+    Returns ``(unit_name, file, signal_events)`` where the file contains an
+    ``interface I<unit_name>`` holding all threads dispatched by a
+    ``CurrentExecutionThread`` enum, plus a thin wrapper ``component C<unit_name>``
+    that ``provides`` that interface. ``signal_events`` is the list of branch-signal
+    out-event names declared by the interface — required so callers (e.g. the
+    Network generator) can stub empty handlers for each one.
 
     ``callback_topics`` maps each callback thread name to the Zenoh key expression
     it subscribes to. For each entry we declare an ``in void <mangled>()`` event
@@ -192,7 +195,7 @@ def state_machines_to_code(
 
     iface = Interface(name=f"I{unit_name}", events=events, behavior=behavior)
     comp = Component(name=f"C{unit_name}", provides=[Provides(f"I{unit_name}", f"{unit_name}_top")])
-    return unit_name, File(imports=["Step.dzn"], body=[iface, comp])
+    return unit_name, File(imports=["Step.dzn"], body=[iface, comp]), signal_events
 
 
 class CodeGenerator:
@@ -211,19 +214,23 @@ class CodeGenerator:
         """
         unit_files: dict[str, File] = {}
         unit_by_id: dict[int, str] = {}
+        unit_signals: dict[str, list[str]] = {}
 
         for node_id, attrs in model:
             tu: TranslationUnit = attrs["data"]
             name = unit_name_from_file(tu.file_name)
             state_machines = _generate_behavior(tu)
             callback_topics = {cb.name: cb.key_expr for cb in tu.callback_threads}
-            unit_name, file = state_machines_to_code(name, state_machines, callback_topics)
+            unit_name, file, signals = state_machines_to_code(name, state_machines, callback_topics)
             unit_files[unit_name] = file
             unit_by_id[node_id] = unit_name
+            unit_signals[unit_name] = signals
 
         self.unit_files = unit_files
         self.stepper = _generate_stepper()
-        self.network = _generate_network_elt(model, unit_by_id, single_stepper=single_stepper)
+        self.network = _generate_network_elt(
+            model, unit_by_id, unit_signals=unit_signals, single_stepper=single_stepper,
+        )
         self.top = _generate_top_model(model, unit_by_id, single_stepper=single_stepper)
         return unit_files, self.stepper, self.network, self.top
 

@@ -36,12 +36,19 @@ def _generate_stepper() -> File:
 def _generate_network_elt(
     model: InterconnectionGraph,
     unit_by_id: dict[int, str],
+    unit_signals: dict[str, list[str]] | None = None,
     single_stepper: bool = False,
 ) -> File:
     """Produce ``Network.dzn``: an ``INetCtl`` interface and a ``Network`` component
     that wires every published topic to its subscribing units and dispatches
-    per-unit (or shared) step events."""
+    per-unit (or shared) step events.
+
+    ``unit_signals`` maps each unit name to its list of branch-signal out events.
+    Network must declare an empty handler for each so Dezyne doesn't flag them
+    as unhandled provider outputs from a required interface.
+    """
     units = [unit_by_id[i] for i in sorted(unit_by_id.keys())]
+    unit_signals = unit_signals or {}
 
     imports = [f"{u}.dzn" for u in units] + ["Step.dzn"]
 
@@ -69,6 +76,11 @@ def _generate_network_elt(
         bhv_statements.append(
             Trigger(f"{src_unit}.{m}()", Action(f"{dst_unit}.{m}()"))
         )
+
+    # Empty handlers for every branch-signal out event of every required unit.
+    for u in units:
+        for sig in unit_signals.get(u, []):
+            bhv_statements.append(Trigger(f"{u}.{sig}()", Block([])))
 
     if single_stepper:
         bhv_statements.append(

@@ -19,7 +19,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(2, [OutEvent("basic/B/A")], [ChangeStateTo(1)]),
             ])
         }
-        name, file = state_machines_to_code("A", sms)
+        name, file, _ = state_machines_to_code("A", sms)
         code = file.to_code()
 
         self.assertEqual(name, "A")
@@ -36,7 +36,7 @@ class TestStateMachinesToCode(unittest.TestCase):
         sms = {
             "main": StateMachine([State(1, [], []), State(2, [], []), State(3, [], [])])
         }
-        _, file = state_machines_to_code("A", sms)
+        _, file, _ = state_machines_to_code("A", sms)
         code = file.to_code()
         self.assertIn("subint State_main { 1..3 };", code)
         self.assertIn("State_main s_main = 1;", code)
@@ -49,7 +49,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(3, [], []),
             ])
         }
-        _, file = state_machines_to_code("X", sms)
+        _, file, _ = state_machines_to_code("X", sms)
         code = file.to_code()
         # Branch signal events are declared for each (source, target).
         self.assertIn("out void main_branch_1_to_2();", code)
@@ -65,7 +65,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(2, [], []),
             ])
         }
-        _, file = state_machines_to_code("X", sms)
+        _, file, _ = state_machines_to_code("X", sms)
         code = file.to_code()
         self.assertNotIn("main_branch_", code)
         self.assertRegex(code, r"\[s_main == 1\]\s*s_main = 2;")
@@ -76,7 +76,7 @@ class TestStateMachinesToCode(unittest.TestCase):
             "cb": StateMachine([State(1, [DeferTo("main")], [])]),
         }
         callback_topics = {"cb": "basic/B/A"}
-        _, file = state_machines_to_code("B", sms, callback_topics)
+        _, file, _ = state_machines_to_code("B", sms, callback_topics)
         code = file.to_code()
         # The subscribed topic becomes an in-event declaration.
         self.assertIn("in void basic_B_A();", code)
@@ -93,7 +93,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(2, [DeferTo("main")], []),  # terminal DeferTo to own thread
             ])
         }
-        _, file = state_machines_to_code("A", sms)
+        _, file, _ = state_machines_to_code("A", sms)
         code = _normalize(file.to_code())
         # On main, DeferTo('main') is a no-op: render an empty block.
         self.assertIn("[s_main == 2] {}", code)
@@ -106,7 +106,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(2, [DeferTo("main")], []),
             ]),
         }
-        _, file = state_machines_to_code("B", sms)
+        _, file, _ = state_machines_to_code("B", sms)
         code = _normalize(file.to_code())
 
         # Enum lists both threads with main first
@@ -120,7 +120,7 @@ class TestStateMachinesToCode(unittest.TestCase):
             "main": StateMachine([State(1, [], [])]),
             "a_callback": StateMachine([State(1, [], [])]),
         }
-        _, file = state_machines_to_code("U", sms)
+        _, file, _ = state_machines_to_code("U", sms)
         code = file.to_code()
         # main is first regardless of insertion order
         m = re.search(r"enum CurrentExecutionThread \{ ([^}]+) \};", code)
@@ -134,7 +134,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(2, [OutEvent("foo/bar")], [ChangeStateTo(1)]),  # duplicate
             ])
         }
-        _, file = state_machines_to_code("A", sms)
+        _, file, _ = state_machines_to_code("A", sms)
         code = file.to_code()
         self.assertEqual(code.count("out void foo_bar();"), 1)
 

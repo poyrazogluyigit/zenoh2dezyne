@@ -77,6 +77,17 @@ class TestNetwork(unittest.TestCase):
         self.assertRegex(code, r"on s2\.step\(\):\s*B\.step\(\);")
         self.assertRegex(code, r"on s3\.step\(\):\s*C\.step\(\);")
 
+    def test_empty_handlers_for_unit_branch_signals(self):
+        unit_signals = {
+            "A": ["main_branch_1_to_2", "main_branch_1_to_3"],
+            "B": ["callback_branch_4_to_5"],
+            "C": [],
+        }
+        code = _normalize(_generate_network_elt(self.ig, self.unit_by_id, unit_signals=unit_signals).to_code())
+        self.assertRegex(code, r"on A\.main_branch_1_to_2\(\):\s*\{\}")
+        self.assertRegex(code, r"on A\.main_branch_1_to_3\(\):\s*\{\}")
+        self.assertRegex(code, r"on B\.callback_branch_4_to_5\(\):\s*\{\}")
+
     def test_single_stepper_collapses_step_dispatch(self):
         code = _normalize(_generate_network_elt(self.ig, self.unit_by_id, single_stepper=True).to_code())
         self.assertIn("requires IStep s;", code)
