@@ -77,18 +77,17 @@ class JoernQueryAPI:
             return _parse_joern_json(query_res)
         return wrapper
 
-    @_query
-    def open_project(self, project_name: str):
+    def open_project(self, project_name: str) -> str:
         """Load a project by name into the Joern workspace.
-        
-        Args:
-            project_name: Name of the project to open
-            
-        Returns:
-            Response from Joern
+
+        ``open()`` is invoked for its side effect; it returns a ``Project``
+        object which can't be JSON-serialized through ``.toJson`` (Joern's
+        reflection-based serializer trips on the underlying ``UnixPath`` field
+        under Java 17+'s module access rules). Send the query raw and let the
+        caller ignore the response.
         """
         logger.debug(f"Opening Joern project: {project_name}")
-        return f'open("{project_name}")'
+        return self._send_query(f'open("{project_name}")')
     
     @_query
     def import_code(self, input_path: str, project_name: str):

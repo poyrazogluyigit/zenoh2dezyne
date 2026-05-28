@@ -6,9 +6,12 @@ def mangle_topic(topic: str) -> str:
     """Translate a Zenoh key expression into a valid Dezyne event identifier.
 
     Zenoh topics use '/' as a separator (e.g. ``basic/B/A``); Dezyne identifiers
-    cannot contain '/' so we replace each one with '_'.
+    cannot contain '/' so we replace each one with '_'. Joern surfaces literal
+    string arguments with their surrounding quotes (``"basic/B/A"``) so we strip
+    those first — otherwise a single topic shows up twice (once quoted from a
+    ``var_publisher``, once unquoted from a ``session.put``).
     """
-    return topic.replace("/", "_")
+    return topic.strip().strip('"').replace("/", "_")
 
 
 def unit_name_from_file(file_name: str) -> str:

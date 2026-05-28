@@ -4,7 +4,14 @@ import re
 # line number is not returned
 def _clean_label(label: str):
     clean_label = label.strip('<>').strip('"').strip('<>')
-    metadata, code = re.split(r'<BR/>', clean_label, flags=re.IGNORECASE)
+    # Only the first <BR/> separates metadata from code; subsequent <BR/>s appear
+    # inside multi-line code snippets (e.g. function calls split across lines).
+    parts = re.split(r'<BR/>', clean_label, maxsplit=1, flags=re.IGNORECASE)
+    if len(parts) == 1:
+        metadata, code = parts[0], ""
+    else:
+        metadata, code = parts
+    code = re.sub(r'<BR/>', '\n', code, flags=re.IGNORECASE)
     nodeType, _ = metadata.rsplit(',', 1)
     return html.unescape(nodeType.strip()), html.unescape(code.strip())
      

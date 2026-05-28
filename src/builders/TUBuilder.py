@@ -62,16 +62,16 @@ class TUBuilder:
 
     def build(self) -> list[TranslationUnit]:
         translation_units = []
-        for filename in self.getSourceFiles():
-            subs = self.getSubscriberInfo(filename)
-            mainCFG = self.getMainCFG(filename)
-            pubVars = self.getPublishers(filename)
-            sessionPubs = self.getSessionPuts(filename)
+        for filename in self._getSourceFiles():
+            subs = self._getSubscriberInfo(filename)
+            mainCFG = self._getMainCFG(filename)
+            pubVars = self._getPublishers(filename)
+            sessionPubs = self._getSessionPuts(filename)
             translation_units.append(
                 TranslationUnit(
                     file_name=filename,
                     main_thread=MainThread(cfg=mainCFG),
-                    callbacks=subs, 
+                    callback_threads=subs,
                     var_publishers=pubVars,
                     sess_publishers=sessionPubs,
                 ))

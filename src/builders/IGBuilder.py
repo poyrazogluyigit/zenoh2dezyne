@@ -64,7 +64,7 @@ class IGBuilder:
         return graph
     
     def _get_in_topics_of(self, unit: TranslationUnit) -> set[str]:
-        return set(cb.key_expr for cb in unit.callbacks)
+        return set(cb.key_expr for cb in unit.callback_threads)
 
     def _get_out_topics_of(self, unit: TranslationUnit) -> set[str]:
         out_topics = [vp.key_expr for vp in unit.var_publishers]

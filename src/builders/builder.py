@@ -5,7 +5,7 @@ from ..datatypes import CallbackThread, MainThread, TranslationUnit, VarPublishe
 from ..graphutils import JoernCFG
 
 from .TUBuilder import TUBuilder
-from .IGBuilder import IGBuilder
+from .IGBuilder import IGBuilder, InterconnectionGraph
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class Builder:
         self.api = joern_api
 
 
-    def buildProject(self, project_name: str) -> list[TranslationUnit]:
+    def buildProject(self, project_name: str) -> InterconnectionGraph:
         """Build the unit dictionary by querying Joern for the given project.
         
         Args:
@@ -42,4 +42,4 @@ class Builder:
         translation_units = tu_builder.build()
         logger.debug("Building interconnection graph")
         graph = IGBuilder(translation_units).build()
-        return graph
+        return InterconnectionGraph(graph)
