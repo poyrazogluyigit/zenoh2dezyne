@@ -26,17 +26,29 @@ class Builder:
         self.api = joern_api
 
 
-    def buildProject(self, project_name: str) -> InterconnectionGraph:
-        """Build the unit dictionary by querying Joern for the given project.
-        
+    def buildProject(self, project_name: str, input_dir: str | None = None) -> InterconnectionGraph:
+        """Build the interconnection graph for the given project.
+
+        If ``input_dir`` is supplied, the source tree at that path is imported
+        into the Joern workspace as ``project_name`` (which also opens it).
+        Otherwise the project is assumed to already exist in the workspace
+        and is just opened.
+
         Args:
-            project_name: Name of the project to analyze
-            
+            project_name: Joern project identifier.
+            input_dir: Optional absolute path to a source directory to import.
+
         Returns:
-            Dictionary mapping file names to Unit objects
+            The interconnection graph for the project.
         """
-        logger.debug(f"Starting Joern analysis for project '{project_name}'")
-        self.api.open_project(project_name)        
+        if input_dir is not None:
+            logger.info(f"Creating project with {project_name}")
+            print(f"creating project with {project_name}")
+            self.api.import_code(input_dir, project_name)
+        else:
+            logger.debug(f"Opening Joern project '{project_name}'")
+            self.api.open_project(project_name)
+
         tu_builder = TUBuilder(self.api)
         logger.debug("Building Translation Unit structures")
         translation_units = tu_builder.build()

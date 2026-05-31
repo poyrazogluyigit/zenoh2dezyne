@@ -89,10 +89,18 @@ class JoernQueryAPI:
         logger.debug(f"Opening Joern project: {project_name}")
         return self._send_query(f'open("{project_name}")')
     
-    @_query
-    def import_code(self, input_path: str, project_name: str):
-        logger.debug(f"Importing code from {input_path}")
-        return f'importCode(inputPath="{input_path}", projectName="{project_name}")'
+    def import_code(self, input_path: str, project_name: str) -> str:
+        """Import a source directory into the Joern workspace as ``project_name``.
+
+        Like :meth:`open_project`, ``importCode`` returns a ``Project`` whose
+        ``.toJson`` reflection fails on Java 17+; send the query raw and let
+        the caller ignore the response. The import also opens the project, so
+        a subsequent ``open()`` is not needed.
+        """
+        logger.debug(f"Importing code from {input_path} as project {project_name}")
+        return self._send_query(
+            f'importCode(inputPath="{input_path}", projectName="{project_name}")'
+        )
     
     @_query
     def get_var_publishers(self, file_name: str) -> list[dict]:

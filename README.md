@@ -72,28 +72,39 @@ source .venv/bin/activate
 pip install networkx requests pyparsing
 ```
 
-Start a Joern server in a separate terminal and import the example project
-once (Joern persists imports across runs in its workspace):
+Start a Joern server in a separate terminal:
 
 ```bash
 joern --server
-# then in another terminal, in the joern interactive shell or via REST:
-#   importCode(inputPath="examples/basic-example", projectName="basic-example")
 ```
+
+Joern persists projects in its workspace across runs, so once a source tree has
+been imported under a given project name it can be re-opened by name in later
+invocations — see the two CLI modes below.
 
 ## Usage
 
 ```bash
-python -m src.main <project_name> \
+python -m src.main (--project NAME | --input PATH) \
     --output <dir> \
     --joern-server <url> \
     --logging <LEVEL> \
     [--single-stepper]
 ```
 
+Exactly one of `--project` or `--input` is required:
+
+- **`--project NAME`** opens an existing Joern project by name. Use this when
+  the source has already been imported in a previous run.
+- **`--input PATH`** runs `importCode` on the source directory at `PATH`. The
+  project name is taken from the directory's basename, so
+  `--input examples/basic-example` registers the project as `basic-example`.
+  A line `creating project with <name>` is printed when this happens.
+
 | Flag | Default | Description |
 |---|---|---|
-| `project_name` (positional) | — | Name of the Joern project to translate. Must already be loaded in the Joern workspace. |
+| `-p, --project` | — | Open an existing Joern project by name. |
+| `-i, --input` | — | Import a source directory; project name = basename. |
 | `-o, --output` | `generate` | Directory to write generated `.dzn` files into. |
 | `--joern-server` | `http://localhost:8080` | URL of the running Joern server. |
 | `-l, --logging` | `WARNING` | Logging verbosity (`DEBUG`/`INFO`/`WARNING`/`ERROR`/`CRITICAL`). |
@@ -101,8 +112,18 @@ python -m src.main <project_name> \
 
 ### End-to-end example
 
+First run — import the source:
+
 ```bash
-python -m src.main basic-example -o /tmp/basic-example-models \
+python -m src.main --input examples/basic-example -o /tmp/basic-example-models \
+    --joern-server http://localhost:8080
+# prints: creating project with basic-example
+```
+
+Subsequent runs against the same project:
+
+```bash
+python -m src.main --project basic-example -o /tmp/basic-example-models \
     --joern-server http://localhost:8080
 ```
 
