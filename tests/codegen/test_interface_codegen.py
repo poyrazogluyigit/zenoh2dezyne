@@ -75,16 +75,36 @@ class TestStateMachinesToCode(unittest.TestCase):
             "main": StateMachine([State(1, [DeferTo("main")], [])]),
             "cb": StateMachine([State(1, [DeferTo("main")], [])]),
         }
-        callback_topics = {"cb": "basic/B/A"}
+        callback_topics = {"cb": ["basic/B/A"]}
         _, file, _ = state_machines_to_code("B", sms, callback_topics)
         code = file.to_code()
         # The subscribed topic becomes an in-event declaration.
         self.assertIn("in void basic_B_A();", code)
         # And drives a trigger that switches to the callback when on main.
+        # Enum values must be qualified with the enum type in Dezyne.
         self.assertRegex(
             re.sub(r"\s+", " ", code),
-            r"on basic_B_A: \{ \[thread == main\] \{ thread = cb; s_cb = 1; \} \[otherwise\] \{\} \}",
+            r"on basic_B_A: \{ "
+            r"\[thread == CurrentExecutionThread\.main\] \{ "
+            r"thread = CurrentExecutionThread\.cb; s_cb = 1; "
+            r"\} \[otherwise\] \{\} \}",
         )
+
+    def test_same_callback_subscribed_to_multiple_topics(self):
+        sms = {
+            "main": StateMachine([State(1, [DeferTo("main")], [])]),
+            "AB_callback": StateMachine([State(1, [DeferTo("main")], [])]),
+        }
+        callback_topics = {"AB_callback": ["basic/C/A", "basic/C/B"]}
+        _, file, _ = state_machines_to_code("C", sms, callback_topics)
+        code = file.to_code()
+        # Both topics declared as in-events.
+        self.assertIn("in void basic_C_A();", code)
+        self.assertIn("in void basic_C_B();", code)
+        # And both have their own trigger that switches into the same callback.
+        self.assertEqual(code.count("on basic_C_A:"), 1)
+        self.assertEqual(code.count("on basic_C_B:"), 1)
+        self.assertEqual(code.count("thread = CurrentExecutionThread.AB_callback;"), 2)
 
     def test_terminal_state_emits_empty_block(self):
         sms = {
@@ -111,8 +131,11 @@ class TestStateMachinesToCode(unittest.TestCase):
 
         # Enum lists both threads with main first
         self.assertIn("enum CurrentExecutionThread { main, callback };", code)
-        # Callback's terminal state assigns thread=main and resets s_callback=1
-        self.assertRegex(code, r"\[s_callback == 2\]\s*\{\s*thread = main;\s*s_callback = 1;\s*\}")
+        # Callback's terminal state assigns thread=main (qualified) and resets s_callback=1
+        self.assertRegex(
+            code,
+            r"\[s_callback == 2\]\s*\{\s*thread = CurrentExecutionThread\.main;\s*s_callback = 1;\s*\}",
+        )
 
     def test_main_always_first_in_enum(self):
         sms = {

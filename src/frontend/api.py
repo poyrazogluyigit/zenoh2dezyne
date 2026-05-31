@@ -113,11 +113,18 @@ class JoernQueryAPI:
     
     @_query
     def get_session_variables(self, file_name: str):
+        # The inner `cpg.call.name("put")` MUST be scoped to ``file_name``: every
+        # file with a Zenoh session names the variable ``session``, and without
+        # the scope a ``session.put`` from one file leaks into every other file's
+        # publisher list (and from there into spurious Network edges).
         return f'''cpg.call.code(".*zenoh::Session::open\\\\(.*")
         .where(_.file.name("{file_name}"))
-        .inAssignment.target.code.map {{ 
+        .inAssignment.target.code.map {{
             sessionVar =>
-            val putArgs = cpg.call.name("put").where(_.argument(0).codeExact(sessionVar)).argument(1).code.l
+            val putArgs = cpg.call.name("put")
+                .where(_.file.name("{file_name}"))
+                .where(_.argument(0).codeExact(sessionVar))
+                .argument(1).code.l
             (sessionVar, putArgs)
         }}.toMap'''
     

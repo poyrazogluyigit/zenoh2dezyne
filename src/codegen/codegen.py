@@ -18,12 +18,25 @@ from ._naming import mangle_topic, unit_name_from_file
 logger = logging.getLogger(__name__)
 
 
+_THREAD_ENUM = "CurrentExecutionThread"
+
+
 def _state_var(thread: str) -> str:
     return f"s_{thread}"
 
 
 def _state_type(thread: str) -> str:
     return f"State_{thread}"
+
+
+def _thread_value(thread: str) -> str:
+    """Dezyne-qualified enum value, e.g. ``CurrentExecutionThread.main``.
+
+    Bare identifiers (just ``main``) would be parsed as variable references, so
+    enum values must be qualified by the enum type in every position — guards,
+    assignments, and initializers.
+    """
+    return f"{_THREAD_ENUM}.{thread}"
 
 
 def _branch_signal(thread: str, source: int, target: int) -> str:
@@ -61,7 +74,7 @@ def _render_state_for_thread(thread: str, state: State) -> tuple[list[Guard], li
         elif isinstance(stmt, DeferTo):
             if stmt.target_execution == thread:
                 continue
-            inline_stmts.append(Assignment("thread", stmt.target_execution))
+            inline_stmts.append(Assignment("thread", _thread_value(stmt.target_execution)))
             inline_stmts.append(Assignment(_state_var(thread), "1"))
             parks = True
         else:
@@ -96,7 +109,7 @@ def _render_state_for_thread(thread: str, state: State) -> tuple[list[Guard], li
 def state_machines_to_code(
     unit_name: str,
     state_machines: dict[str, StateMachine],
-    callback_topics: dict[str, str] | None = None,
+    callback_topics: dict[str, list[str]] | None = None,
 ) -> tuple[str, File, list[str]]:
     """Convert per-thread state machines into a single Dezyne File for one translation unit.
 
@@ -107,10 +120,11 @@ def state_machines_to_code(
     out-event names declared by the interface — required so callers (e.g. the
     Network generator) can stub empty handlers for each one.
 
-    ``callback_topics`` maps each callback thread name to the Zenoh key expression
-    it subscribes to. For each entry we declare an ``in void <mangled>()`` event
-    and a trigger that, when fired on the main thread, switches execution into
-    the callback (resetting its state variable to 1).
+    ``callback_topics`` maps each callback thread name to the **list** of Zenoh
+    key expressions that invoke it (a single callback function may be wired to
+    several ``declare_subscriber`` calls). For each topic we declare an
+    ``in void <mangled>()`` event and a trigger that, when fired on main,
+    switches execution into the callback (resetting its state variable to 1).
     """
     callback_topics = callback_topics or {}
 
@@ -145,15 +159,18 @@ def state_machines_to_code(
                     signal_events.append(sig)
         per_thread_guards[t] = guards
 
-    # In-events: one per subscribed callback topic.
+    # In-events: one per (callback_thread, subscribed_topic) pair. A single
+    # callback function can be wired to multiple topics — each yields its own
+    # in-event and its own trigger, all switching execution into the same thread.
     in_topics: list[tuple[str, str]] = []  # (thread_name, mangled_topic)
     seen_in: set[str] = set()
-    for cb_thread, key_expr in callback_topics.items():
-        m = mangle_topic(key_expr)
-        if m in seen_in:
-            continue
-        seen_in.add(m)
-        in_topics.append((cb_thread, m))
+    for cb_thread, key_exprs in callback_topics.items():
+        for key_expr in key_exprs:
+            m = mangle_topic(key_expr)
+            if m in seen_in:
+                continue
+            seen_in.add(m)
+            in_topics.append((cb_thread, m))
 
     # Event declarations: outs (topics), outs (branch signals), ins (subscribed topics), in step.
     events: list[EventDecl] = []
@@ -167,21 +184,21 @@ def state_machines_to_code(
     for t in threads:
         type_decls.append(TypeDecl("subint", _state_type(t), ["1", str(max(state_machines[t].num_states, 1))]))
 
-    var_decls: list[VarDecl] = [VarDecl("CurrentExecutionThread", "thread", "main")]
+    var_decls: list[VarDecl] = [VarDecl(_THREAD_ENUM, "thread", _thread_value("main"))]
     for t in threads:
         var_decls.append(VarDecl(_state_type(t), _state_var(t), "1"))
 
-    # on step: { [thread == X] { ... } ... }
+    # on step: { [thread == CurrentExecutionThread.X] { ... } ... }
     thread_branches: list[Guard] = [
-        Guard(f"thread == {t}", Block(per_thread_guards[t])) for t in threads
+        Guard(f"thread == {_thread_value(t)}", Block(per_thread_guards[t])) for t in threads
     ]
     statements: list[ASTNode] = [Trigger("step", Block(thread_branches))]
 
     # Per-callback on-topic triggers: switch to callback on main, otherwise ignore.
     for cb_thread, mtopic in in_topics:
         statements.append(Trigger(mtopic, Block([
-            Guard("thread == main", Block([
-                Assignment("thread", cb_thread),
+            Guard(f"thread == {_thread_value('main')}", Block([
+                Assignment("thread", _thread_value(cb_thread)),
                 Assignment(_state_var(cb_thread), "1"),
             ])),
             Guard("otherwise", Block([])),
@@ -220,7 +237,11 @@ class CodeGenerator:
             tu: TranslationUnit = attrs["data"]
             name = unit_name_from_file(tu.file_name)
             state_machines = _generate_behavior(tu)
-            callback_topics = {cb.name: cb.key_expr for cb in tu.callback_threads}
+            # Multiple `declare_subscriber` calls may share a callback function
+            # (same closure state); aggregate their topics under one thread name.
+            callback_topics: dict[str, list[str]] = {}
+            for cb in tu.callback_threads:
+                callback_topics.setdefault(cb.name, []).append(cb.key_expr)
             unit_name, file, signals = state_machines_to_code(name, state_machines, callback_topics)
             unit_files[unit_name] = file
             unit_by_id[node_id] = unit_name
