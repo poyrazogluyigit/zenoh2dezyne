@@ -2,6 +2,7 @@
 the network element, and the top model."""
 import logging
 import os
+from dataclasses import dataclass, field
 
 from ..builders import InterconnectionGraph
 from ..datatypes import StateMachine, State, OutEvent, DeferTo, ChangeStateTo, TranslationUnit
@@ -27,6 +28,22 @@ def _state_var(thread: str) -> str:
 
 def _state_type(thread: str) -> str:
     return f"State_{thread}"
+
+
+@dataclass
+class UnitCodegenResult:
+    """The artefacts produced for one translation unit.
+
+    Carries everything Network needs to address the unit: the file itself, its
+    out-topics (need either routing edges or empty handlers in Network), its
+    branch-signal out-events (always empty handlers), and its in-topics (used
+    to detect orphan subscriptions).
+    """
+    name: str
+    file: "File"
+    out_topics: list[str] = field(default_factory=list)
+    signal_events: list[str] = field(default_factory=list)
+    in_topics: list[str] = field(default_factory=list)
 
 
 def _thread_value(thread: str) -> str:
@@ -110,7 +127,8 @@ def state_machines_to_code(
     unit_name: str,
     state_machines: dict[str, StateMachine],
     callback_topics: dict[str, list[str]] | None = None,
-) -> tuple[str, File, list[str]]:
+    declared_topics: list[str] | None = None,
+) -> UnitCodegenResult:
     """Convert per-thread state machines into a single Dezyne File for one translation unit.
 
     Returns ``(unit_name, file, signal_events)`` where the file contains an
@@ -125,14 +143,25 @@ def state_machines_to_code(
     several ``declare_subscriber`` calls). For each topic we declare an
     ``in void <mangled>()`` event and a trigger that, when fired on main,
     switches execution into the callback (resetting its state variable to 1).
+
+    ``declared_topics`` is the unit's complete publishing surface (all
+    ``declare_publisher`` topics and any ``session.put`` topics) — including
+    topics that are never actually fired in any state machine. Listing them
+    ensures the interface advertises the same topics the IG considers
+    outgoing, so Network's routing triggers always match an existing event.
     """
     callback_topics = callback_topics or {}
+    declared_topics = declared_topics or []
 
     threads = list(state_machines.keys())
     if "main" in threads:
         threads = ["main"] + [t for t in threads if t != "main"]
 
-    # Pass 1: collect out events (mangled topics) and branch-signal events.
+    # Pass 1: collect out events (mangled topics).
+    # Source 1 — topics actually `.put()`'d in some state machine.
+    # Source 2 — topics declared via `declare_publisher` or `session.put` even
+    #            if never fired. These must still be advertised so the IG's
+    #            routing edges into this unit reference a known event.
     out_topics: list[str] = []
     seen_topics: set[str] = set()
     for sm in state_machines.values():
@@ -143,6 +172,11 @@ def state_machines_to_code(
                     if m not in seen_topics:
                         seen_topics.add(m)
                         out_topics.append(m)
+    for t in declared_topics:
+        m = mangle_topic(t)
+        if m not in seen_topics:
+            seen_topics.add(m)
+            out_topics.append(m)
 
     # Pass 2: render guards and collect the branch-signal names they introduce.
     per_thread_guards: dict[str, list[Guard]] = {}
@@ -212,7 +246,13 @@ def state_machines_to_code(
 
     iface = Interface(name=f"I{unit_name}", events=events, behavior=behavior)
     comp = Component(name=f"C{unit_name}", provides=[Provides(f"I{unit_name}", f"{unit_name}_top")])
-    return unit_name, File(imports=["Step.dzn"], body=[iface, comp]), signal_events
+    return UnitCodegenResult(
+        name=unit_name,
+        file=File(imports=["Step.dzn"], body=[iface, comp]),
+        out_topics=out_topics,
+        signal_events=signal_events,
+        in_topics=[m for _, m in in_topics],
+    )
 
 
 class CodeGenerator:
@@ -232,6 +272,8 @@ class CodeGenerator:
         unit_files: dict[str, File] = {}
         unit_by_id: dict[int, str] = {}
         unit_signals: dict[str, list[str]] = {}
+        unit_out_topics: dict[str, list[str]] = {}
+        unit_in_topics: dict[str, list[str]] = {}
 
         for node_id, attrs in model:
             tu: TranslationUnit = attrs["data"]
@@ -242,15 +284,39 @@ class CodeGenerator:
             callback_topics: dict[str, list[str]] = {}
             for cb in tu.callback_threads:
                 callback_topics.setdefault(cb.name, []).append(cb.key_expr)
-            unit_name, file, signals = state_machines_to_code(name, state_machines, callback_topics)
-            unit_files[unit_name] = file
-            unit_by_id[node_id] = unit_name
-            unit_signals[unit_name] = signals
+            # The unit's complete publishing surface: every var_publisher and
+            # every session.put topic, including those never fired in any CFG.
+            declared_topics: list[str] = [vp.key_expr for vp in tu.var_publishers]
+            for sp in tu.sess_publishers:
+                declared_topics.extend(sp.key_exprs)
+            result = state_machines_to_code(
+                name, state_machines, callback_topics, declared_topics=declared_topics,
+            )
+            unit_files[result.name] = result.file
+            unit_by_id[node_id] = result.name
+            unit_signals[result.name] = result.signal_events
+            unit_out_topics[result.name] = result.out_topics
+            unit_in_topics[result.name] = result.in_topics
+
+        # Orphan-subscriber check: any in-topic that no unit publishes is dead
+        # at the Network level. Keep the declaration (it reflects the source's
+        # intent), but warn so the user notices.
+        all_published: set[str] = {t for tops in unit_out_topics.values() for t in tops}
+        for u, ins in unit_in_topics.items():
+            for t in ins:
+                if t not in all_published:
+                    logger.warning(
+                        "Unit %s subscribes to topic %r but no unit publishes it — "
+                        "the on-%s trigger will never fire.", u, t, t,
+                    )
 
         self.unit_files = unit_files
         self.stepper = _generate_stepper()
         self.network = _generate_network_elt(
-            model, unit_by_id, unit_signals=unit_signals, single_stepper=single_stepper,
+            model, unit_by_id,
+            unit_signals=unit_signals,
+            unit_out_topics=unit_out_topics,
+            single_stepper=single_stepper,
         )
         self.top = _generate_top_model(model, unit_by_id, single_stepper=single_stepper)
         return unit_files, self.stepper, self.network, self.top

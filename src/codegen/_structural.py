@@ -5,6 +5,7 @@ information) and produce Dezyne AST :class:`File` nodes directly.
 """
 from .ast import (
     Action,
+    ASTNode,
     Behavior,
     Binding,
     Block,
@@ -37,18 +38,28 @@ def _generate_network_elt(
     model: InterconnectionGraph,
     unit_by_id: dict[int, str],
     unit_signals: dict[str, list[str]] | None = None,
+    unit_out_topics: dict[str, list[str]] | None = None,
     single_stepper: bool = False,
 ) -> File:
     """Produce ``Network.dzn``: an ``INetCtl`` interface and a ``Network`` component
-    that wires every published topic to its subscribing units and dispatches
+    that routes every published topic to its subscribing units and dispatches
     per-unit (or shared) step events.
 
-    ``unit_signals`` maps each unit name to its list of branch-signal out events.
-    Network must declare an empty handler for each so Dezyne doesn't flag them
-    as unhandled provider outputs from a required interface.
+    Dezyne requires every output of a ``requires`` interface to be addressed.
+    This function therefore enumerates three categories per unit and emits a
+    trigger for each:
+
+    1. **Routed topics** — IG edges from this unit to one or more subscribers.
+       Multiple subscribers on the same (src, topic) produce a single trigger
+       whose body fires each destination sequentially.
+    2. **Orphan topics** (``unit_out_topics`` minus routed) — declared by the
+       interface but with no subscriber in the IG. Empty ``{}`` handler.
+    3. **Branch-signal events** (``unit_signals``) — verifier observation
+       events from nondeterministic transitions. Always empty handler.
     """
     units = [unit_by_id[i] for i in sorted(unit_by_id.keys())]
     unit_signals = unit_signals or {}
+    unit_out_topics = unit_out_topics or {}
 
     imports = [f"{u}.dzn" for u in units] + ["Step.dzn"]
 
@@ -69,13 +80,28 @@ def _generate_network_elt(
 
     bhv_statements: list = [Trigger("ctl.kick()", Block([]))]
 
+    # Group edges by (src_unit, mangled_topic) so multiple subscribers on the
+    # same publication fan out into a single trigger with a sequential body.
+    edges_by_src: dict[tuple[str, str], list[str]] = {}
     for src, dst, topic in model.graph.edges(keys=True):
-        src_unit = unit_by_id[src]
-        dst_unit = unit_by_id[dst]
-        m = mangle_topic(topic)
-        bhv_statements.append(
-            Trigger(f"{src_unit}.{m}()", Action(f"{dst_unit}.{m}()"))
-        )
+        key = (unit_by_id[src], mangle_topic(topic))
+        edges_by_src.setdefault(key, []).append(unit_by_id[dst])
+
+    routed: set[tuple[str, str]] = set()
+    for (src_unit, m), dst_units in edges_by_src.items():
+        routed.add((src_unit, m))
+        if len(dst_units) == 1:
+            body: ASTNode = Action(f"{dst_units[0]}.{m}()")
+        else:
+            body = Block([Action(f"{d}.{m}()") for d in dst_units])
+        bhv_statements.append(Trigger(f"{src_unit}.{m}()", body))
+
+    # Orphan-publisher empty handlers: every declared out-topic without a
+    # routing trigger needs an empty handler so Dezyne is satisfied.
+    for u in units:
+        for topic in unit_out_topics.get(u, []):
+            if (u, topic) not in routed:
+                bhv_statements.append(Trigger(f"{u}.{topic}()", Block([])))
 
     # Empty handlers for every branch-signal out event of every required unit.
     for u in units:

@@ -77,6 +77,36 @@ class TestNetwork(unittest.TestCase):
         self.assertRegex(code, r"on s2\.step\(\):\s*B\.step\(\);")
         self.assertRegex(code, r"on s3\.step\(\):\s*C\.step\(\);")
 
+    def test_orphan_out_topics_get_empty_handlers(self):
+        # B publishes basic_A_B but no one in the IG subscribes to it.
+        unit_out_topics = {
+            "A": ["basic_B_A"],
+            "B": ["basic_A_B", "basic_C_B"],
+            "C": ["basic_B_C"],
+        }
+        code = _normalize(_generate_network_elt(
+            self.ig, self.unit_by_id, unit_out_topics=unit_out_topics,
+        ).to_code())
+        # Routed topic uses a routing trigger
+        self.assertRegex(code, r"on A\.basic_B_A\(\):\s*B\.basic_B_A\(\);")
+        # Orphan basic_A_B gets the empty handler
+        self.assertRegex(code, r"on B\.basic_A_B\(\):\s*\{\}")
+
+    def test_fan_out_collapses_into_sequential_block(self):
+        # Build an IG where A.X is consumed by both B and C.
+        g = nx.MultiDiGraph()
+        for i in range(3):
+            g.add_node(i)
+        g.add_edge(0, 1, key="X/topic")
+        g.add_edge(0, 2, key="X/topic")
+        ig = InterconnectionGraph(g)
+        unit_by_id = {0: "A", 1: "B", 2: "C"}
+        code = _normalize(_generate_network_elt(ig, unit_by_id).to_code())
+        # Single trigger, block with both calls.
+        self.assertRegex(code, r"on A\.X_topic\(\):\s*\{\s*B\.X_topic\(\);\s*C\.X_topic\(\);\s*\}")
+        # NOT two separate triggers.
+        self.assertEqual(code.count("on A.X_topic()"), 1)
+
     def test_empty_handlers_for_unit_branch_signals(self):
         unit_signals = {
             "A": ["main_branch_1_to_2", "main_branch_1_to_3"],
