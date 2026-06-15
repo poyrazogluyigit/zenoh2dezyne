@@ -6,10 +6,7 @@ query operations for extracting publisher/subscriber information and
 control flow data from C++ applications using Zenoh.
 """
 import logging
-import json
-import re
 from functools import wraps
-from typing import Any
 
 from ._connection import Connection
 from ._joern_parsers import _parse_joern_json
@@ -113,10 +110,6 @@ class JoernQueryAPI:
     
     @_query
     def get_session_variables(self, file_name: str):
-        # The inner `cpg.call.name("put")` MUST be scoped to ``file_name``: every
-        # file with a Zenoh session names the variable ``session``, and without
-        # the scope a ``session.put`` from one file leaks into every other file's
-        # publisher list (and from there into spurious Network edges).
         return f'''cpg.call.code(".*zenoh::Session::open\\\\(.*")
         .where(_.file.name("{file_name}"))
         .inAssignment.target.code.map {{
