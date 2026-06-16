@@ -8,8 +8,10 @@ from src.frontend.extractors import ZenohExtractor, Ros1Extractor, Ros2Extractor
 class FakeJoernClient:
     def __init__(self, responses: dict[str, object]):
         self._responses = responses
+        self.queries: list[str] = []
 
     def run_query(self, scala: str):
+        self.queries.append(scala)
         for marker, payload in self._responses.items():
             if marker in scala:
                 return payload
@@ -51,6 +53,9 @@ class TestZenohServices(unittest.TestCase):
         roles = {(s.role, s.name) for s in svcs}
         self.assertIn(("server", '"myhome/kitchen/temp"'), roles)
         self.assertIn(("client", '"myhome/kitchen/*"'), roles)
+        # the get-client query must be scoped to the discovered session variable
+        get_query = next(q for q in client.queries if 'name("get")' in q)
+        self.assertIn("codeExact", get_query)
 
 
 class TestNoServicesByDefault(unittest.TestCase):

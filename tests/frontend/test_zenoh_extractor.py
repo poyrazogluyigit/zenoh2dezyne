@@ -49,6 +49,34 @@ class TestZenohExtractor(unittest.TestCase):
     def test_registry_resolves_zenoh(self):
         self.assertIsInstance(get_extractor("zenoh"), ZenohExtractor)
 
+    def test_extract_publishers_records_session_symbols(self):
+        # Session bound to a non-`session` name must still be discovered.
+        client = FakeJoernClient({
+            "declare_publisher": [],
+            "Session::open": [{"s": ['"renamed/topic"']}],
+        })
+        ext = ZenohExtractor()
+        ext.extract_publishers(client, "A.cpp")
+        self.assertEqual(ext._session_symbols, {"s"})
+
+    def test_resolve_uses_discovered_session_not_literal(self):
+        ext = ZenohExtractor()
+        ext._session_symbols = {"s"}
+        # receiver `s` is a session → parse the inline key-expr literal
+        self.assertEqual(ext.resolve_publish_topic('s.put("k/expr", payload)', []), "k/expr")
+        # bare "session" is NOT special anymore when it isn't a discovered session var
+        self.assertIsNone(ext.resolve_publish_topic('session.put("x", payload)', []))
+
+    def test_service_queries_are_session_scoped(self):
+        client = FakeJoernClient({
+            "declare_queryable": [],
+            'name("get")': [],
+        })
+        ZenohExtractor().extract_services(client, "A.cpp")
+        get_query = next(q for q in client.queries if 'name("get")' in q)
+        self.assertIn("Session::open", get_query)
+        self.assertIn("codeExact", get_query)
+
 
 if __name__ == "__main__":
     unittest.main()

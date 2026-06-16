@@ -8,7 +8,13 @@ class ZenohExtractor(BaseExtractor):
     name = "zenoh"
     publish_call_names = frozenset({"put"})
 
+    def __init__(self):
+        # Session variable names discovered during extract_publishers; used by
+        # resolve_publish_topic to detect session puts without hardwiring "session".
+        self._session_symbols: set[str] = set()
+
     def extract_publishers(self, client, file: str) -> list[Publisher]:
+        self._session_symbols = set()
         publishers: list[Publisher] = []
         # declare_publisher handles
         var_pubs = client.run_query(f'''cpg.call.name("declare_publisher")
@@ -32,6 +38,7 @@ class ZenohExtractor(BaseExtractor):
         }}.toMap''')
         for item in sess:
             for session_var, topics in item.items():
+                self._session_symbols.add(session_var)
                 publishers.extend(Publisher(symbol=session_var, topic=t) for t in topics)
         return publishers
 
@@ -73,17 +80,25 @@ class ZenohExtractor(BaseExtractor):
         ]
 
     def extract_services(self, client, file: str) -> list[ServiceEndpoint]:
-        # Queryables are request/reply servers; session.get(...) is a client.
-        # Both call names are un-templated, so cpg.call.name(...) matches directly.
-        servers = client.run_query(
-            f'cpg.call.name("declare_queryable").where(_.file.name("{file}")).argument(1).code.l'
-        )
-        clients = client.run_query(
-            f'cpg.call.name("get").where(_.file.name("{file}")).argument(1).code.l'
-        )
+        # Queryables (server) and session.get (client) are both invoked on the
+        # session. Scope to the discovered session variable — mirroring the
+        # session.put query — so a bare `.get(...)` from std containers/optionals
+        # is not mistaken for a Zenoh query client.
+        servers = client.run_query(self._session_scoped_query(file, "declare_queryable"))
+        clients = client.run_query(self._session_scoped_query(file, "get"))
         return (
             [ServiceEndpoint(role="server", name=k, topic=k, cfg=None) for k in servers]
             + [ServiceEndpoint(role="client", name=k, topic=k, cfg=None) for k in clients]
+        )
+
+    @staticmethod
+    def _session_scoped_query(file: str, call_name: str) -> str:
+        """A query for ``call_name`` calls whose receiver is a session variable."""
+        return (
+            f'cpg.call.code(".*zenoh::Session::open\\\\(.*").where(_.file.name("{file}"))'
+            f'.inAssignment.target.code.flatMap {{ sv =>'
+            f' cpg.call.name("{call_name}").where(_.file.name("{file}"))'
+            f'.where(_.argument(0).codeExact(sv)).argument(1).code.l }}.l'
         )
 
     def resolve_publish_topic(self, node_code: str, publishers: list[Publisher]) -> str | None:
@@ -93,7 +108,7 @@ class ZenohExtractor(BaseExtractor):
         ``handle.put(...)`` → the topic the handle was declared with.
         """
         receiver = node_code.split(".")[0].strip()
-        if receiver == "session":
+        if receiver in self._session_symbols:
             parts = node_code.split('"')
             return parts[1] if len(parts) > 1 else None
         match = next((p for p in publishers if p.symbol == receiver), None)
