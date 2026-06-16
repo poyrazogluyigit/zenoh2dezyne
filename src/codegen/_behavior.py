@@ -3,22 +3,20 @@ from ..datatypes import TranslationUnit, State, OutEvent, DeferTo, ChangeStateTo
 
 
 def _generate_behavior_for_cfg(translation_unit, cfg: JoernCFG) -> StateMachine:
-    '''Generate a behavior for a given CFG.'''
+    '''Generate a behavior for a given CFG.
+
+    The CFG must already be normalized (publish nodes tagged with neutral
+    ``comm_op``/``topic`` attributes by ``builders._normalize``); this function
+    reads only those neutral attributes and carries no middleware knowledge.
+    '''
     stmts = []
     for node_id in cfg:
         state = State(value=node_id, state_changes=[ChangeStateTo(succ) for succ in cfg.get_successors(node_id)])
         # TODO change DeferTo
         if cfg.get_type(node_id) == "METHOD_RETURN":
             state.statements.append(DeferTo("main"))
-        elif cfg.get_type(node_id) == "put" and cfg.get_data(node_id, "put_target") == "session":
-            topic = cfg.get_data(node_id, "put_topic")
-            state.statements.append(OutEvent(topic))
-        elif cfg.get_type(node_id) == "put":
-            var_name = cfg.get_data(node_id, "put_target")
-            publisher = next((p for p in translation_unit.publishers if p.symbol == var_name), None)
-            if publisher is None:
-                raise ValueError(f"Expected to find a publisher for variable {var_name}")
-            state.statements.append(OutEvent(publisher.topic))
+        elif cfg.get_data(node_id, "comm_op") == "publish":
+            state.statements.append(OutEvent(cfg.get_data(node_id, "topic")))
         stmts.append(state)
     return StateMachine(states=stmts)
 

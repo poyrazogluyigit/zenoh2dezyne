@@ -81,6 +81,6 @@ class ZenohExtractor(BaseExtractor):
         receiver = node_code.split(".")[0].strip()
         if receiver == "session":
             parts = node_code.split('"')
-            return f'"{parts[1]}"' if len(parts) > 1 else None
+            return parts[1] if len(parts) > 1 else None
         match = next((p for p in publishers if p.symbol == receiver), None)
         return match.topic if match else None

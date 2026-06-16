@@ -40,6 +40,13 @@ class JoernCFG:
         else:
             raise ValueError(f"Node ID {node_id} or key {key} not found in CFG")
 
+    def set_data(self, node_id: int, key: str, value) -> None:
+        """Set a key on the given node's data dictionary."""
+        if self.graph and node_id in self.graph:
+            self.graph.nodes[node_id][key] = value
+        else:
+            raise ValueError(f"Node ID {node_id} not found in CFG")
+
     def get_successors(self, node_id: int) -> list[int]:
         """Returns a list of successor node IDs for the given node ID."""
         if self.graph and node_id in self.graph:

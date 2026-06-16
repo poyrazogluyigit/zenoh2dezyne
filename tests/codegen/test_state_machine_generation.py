@@ -5,7 +5,16 @@ import networkx as nx
 from src.datatypes import StateMachine, State, OutEvent, DeferTo, ChangeStateTo
 
 from src.codegen._behavior import _generate_behavior_for_cfg, _generate_behavior
+from src.frontend.extractors import ZenohExtractor
+from src.builders._normalize import normalize_publish_nodes
 from ..mock_data import mock_translation_unit
+
+
+def _normalize_unit(unit):
+    """Normalize every thread CFG of a unit, as TUBuilder does at assembly time."""
+    extractor = ZenohExtractor()
+    for thread in [unit.main_thread] + unit.callback_threads:
+        normalize_publish_nodes(thread.cfg, extractor, unit.publishers)
 
 
 def _state_machine_to_graph(sm: StateMachine) -> nx.DiGraph:
@@ -37,7 +46,10 @@ def _state_machines_isomorphic(actual: StateMachine, expected: StateMachine) -> 
 
 
 class TestStateMachineGeneration(unittest.TestCase):
-    
+
+    def setUp(self):
+        _normalize_unit(mock_translation_unit)
+
     def test_behavior_generation_for_cfg(self):
         output = StateMachine([
                 State(1, [], [ChangeStateTo(2)]),
