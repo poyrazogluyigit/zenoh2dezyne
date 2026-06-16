@@ -3,13 +3,6 @@ from ..graphutils import JoernCFG
 
 
 @dataclass
-class CallbackThread:
-    name: str
-    key_expr: str
-    cfg: JoernCFG
-
-
-@dataclass
 class MainThread:
     cfg: JoernCFG
 
@@ -17,29 +10,39 @@ class MainThread:
     def name(self):
         return "main"
 
-@dataclass
-class ExecutionBranch:
-    node: MainThread | CallbackThread
-
-    @property
-    def name(self):
-        return self.node.name
-
-@dataclass 
-class VarPublisher:
-    var: str
-    key_expr: str
 
 @dataclass
-class SessPublisher:
-    var: str
-    key_exprs: list[str]
+class Subscriber:
+    """A subscription: a callback thread bound to an incoming topic.
+
+    ``name`` is the callback identifier (used as the Dezyne thread name),
+    ``topic`` the normalized key it subscribes to, ``cfg`` the callback's CFG.
+    """
+    name: str
+    topic: str
+    cfg: JoernCFG
+
+
+@dataclass
+class Publisher:
+    """An outgoing publication: a handle/variable name and the topic it publishes."""
+    symbol: str
+    topic: str
+
+
+@dataclass
+class ServiceEndpoint:
+    """A request/reply endpoint. ``role`` is "server" or "client"."""
+    role: str
+    name: str
+    topic: str
+    cfg: JoernCFG | None = None
 
 
 @dataclass
 class TranslationUnit:
     file_name: str
     main_thread: MainThread
-    callback_threads: list[CallbackThread] = field(default_factory=list)
-    var_publishers: list[VarPublisher] = field(default_factory=list)
-    sess_publishers: list[SessPublisher] = field(default_factory=list)
+    callback_threads: list[Subscriber] = field(default_factory=list)
+    publishers: list[Publisher] = field(default_factory=list)
+    services: list[ServiceEndpoint] = field(default_factory=list)

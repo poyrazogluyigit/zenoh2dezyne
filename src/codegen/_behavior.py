@@ -15,10 +15,10 @@ def _generate_behavior_for_cfg(translation_unit, cfg: JoernCFG) -> StateMachine:
             state.statements.append(OutEvent(topic))
         elif cfg.get_type(node_id) == "put":
             var_name = cfg.get_data(node_id, "put_target")
-            publisher = next((vp for vp in translation_unit.var_publishers if vp.var == var_name), None)
+            publisher = next((p for p in translation_unit.publishers if p.symbol == var_name), None)
             if publisher is None:
-                raise ValueError(f"Expected to find a variable publisher for variable {var_name}")
-            state.statements.append(OutEvent(publisher.key_expr))
+                raise ValueError(f"Expected to find a publisher for variable {var_name}")
+            state.statements.append(OutEvent(publisher.topic))
         stmts.append(state)
     return StateMachine(states=stmts)
 

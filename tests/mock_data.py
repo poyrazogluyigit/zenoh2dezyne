@@ -1,5 +1,5 @@
 from src.graphutils import JoernCFG
-from src.datatypes import TranslationUnit, VarPublisher, CallbackThread, MainThread, SessPublisher
+from src.datatypes import TranslationUnit, Publisher, Subscriber, MainThread
 
 empty_callback = '''digraph \"C_callback\" {  \nnode [shape=\"rect\"];  \n
 \"141733920768\" [label = <RETURN, 5<BR/>return;> ]\n\"107374182402\" [label = <METHOD, 4<BR/>C_callback> ]\n
@@ -60,7 +60,9 @@ node [shape="rect"];
 mock_translation_unit = TranslationUnit(
     file_name="mock_file.cpp",
     main_thread=MainThread(cfg=JoernCFG(main_flow)),
-    callback_threads=[CallbackThread(name="callback", key_expr="example/topic/in", cfg=JoernCFG(put_callback))],
-    var_publishers=[VarPublisher(var="A_pub", key_expr="example/topic/var_out")],
-    sess_publishers=[SessPublisher(var="session", key_exprs=["example/topic/session_out"])]
+    callback_threads=[Subscriber(name="callback", topic="example/topic/in", cfg=JoernCFG(put_callback))],
+    publishers=[
+        Publisher(symbol="A_pub", topic="example/topic/var_out"),
+        Publisher(symbol="session", topic="example/topic/session_out"),
+    ],
 )

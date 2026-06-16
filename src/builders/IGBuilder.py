@@ -64,13 +64,10 @@ class IGBuilder:
         return graph
     
     def _get_in_topics_of(self, unit: TranslationUnit) -> set[str]:
-        return set(cb.key_expr for cb in unit.callback_threads)
+        return set(sub.topic for sub in unit.callback_threads)
 
     def _get_out_topics_of(self, unit: TranslationUnit) -> set[str]:
-        out_topics = [vp.key_expr for vp in unit.var_publishers]
-        for sp in unit.sess_publishers:
-            out_topics += sp.key_exprs
-        return set(out_topics)
+        return set(p.topic for p in unit.publishers)
 
     # TODO control publishing edges that do not have a corresponding subscriber
     def _get_out_edges_of(self, unit: TranslationUnit) -> list[tuple[str, TranslationUnit, TranslationUnit]]:

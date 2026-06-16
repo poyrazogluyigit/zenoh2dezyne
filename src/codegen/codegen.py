@@ -283,12 +283,10 @@ class CodeGenerator:
             # (same closure state); aggregate their topics under one thread name.
             callback_topics: dict[str, list[str]] = {}
             for cb in tu.callback_threads:
-                callback_topics.setdefault(cb.name, []).append(cb.key_expr)
-            # The unit's complete publishing surface: every var_publisher and
-            # every session.put topic, including those never fired in any CFG.
-            declared_topics: list[str] = [vp.key_expr for vp in tu.var_publishers]
-            for sp in tu.sess_publishers:
-                declared_topics.extend(sp.key_exprs)
+                callback_topics.setdefault(cb.name, []).append(cb.topic)
+            # The unit's complete publishing surface — every declared/used topic,
+            # including those never fired in any CFG.
+            declared_topics: list[str] = [p.topic for p in tu.publishers]
             result = state_machines_to_code(
                 name, state_machines, callback_topics, declared_topics=declared_topics,
             )

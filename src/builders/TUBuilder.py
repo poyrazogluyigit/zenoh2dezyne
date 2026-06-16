@@ -1,7 +1,7 @@
 import logging
 
 from ..frontend.api import JoernQueryAPI
-from ..datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from ..datatypes import Subscriber, MainThread, TranslationUnit, Publisher
 from ..graphutils import JoernCFG
 
 logger = logging.getLogger(__name__)
@@ -33,46 +33,37 @@ class TUBuilder:
         return JoernCFG(main)
 
 
-    def _getSubscriberInfo(self, file_name: str) -> list[CallbackThread]:
-        '''Returns a list of CallbackNodes in a given file name.'''
+    def _getSubscriberInfo(self, file_name: str) -> list[Subscriber]:
+        '''Returns the subscriptions declared in a given file.'''
         subscriberData = self.api.get_callback_control_flows(file_name)
-        callbackNodes = []
+        subscribers = []
         for data in subscriberData:
             topic, callback_name, dotGraph = data['topic'], data['callback'], data['dotGraph']
-            callbackNodes.append(CallbackThread(
-                callback_name,
-                topic,
-                JoernCFG(dotGraph)
-            ))
-        return callbackNodes
-    
-    def _getPublishers(self, file_name: str) -> list[VarPublisher]:
-        return [
-            VarPublisher(key, value) 
-            for item in self.api.get_var_publishers(file_name) 
+            subscribers.append(Subscriber(callback_name, topic, JoernCFG(dotGraph)))
+        return subscribers
+
+    def _getPublishers(self, file_name: str) -> list[Publisher]:
+        publishers = [
+            Publisher(symbol=key, topic=value)
+            for item in self.api.get_var_publishers(file_name)
             for key, value in item.items()
         ]
-    
-    def _getSessionPuts(self, file_name: str) -> list[SessPublisher]:
-        return [
-            SessPublisher(key, value) 
-            for item in self.api.get_session_variables(file_name) 
-            for key, value in item.items()
-        ]
+        for item in self.api.get_session_variables(file_name):
+            for session_var, topics in item.items():
+                publishers.extend(Publisher(symbol=session_var, topic=t) for t in topics)
+        return publishers
 
     def build(self) -> list[TranslationUnit]:
         translation_units = []
         for filename in self._getSourceFiles():
             subs = self._getSubscriberInfo(filename)
             mainCFG = self._getMainCFG(filename)
-            pubVars = self._getPublishers(filename)
-            sessionPubs = self._getSessionPuts(filename)
+            publishers = self._getPublishers(filename)
             translation_units.append(
                 TranslationUnit(
                     file_name=filename,
                     main_thread=MainThread(cfg=mainCFG),
                     callback_threads=subs,
-                    var_publishers=pubVars,
-                    sess_publishers=sessionPubs,
+                    publishers=publishers,
                 ))
         return translation_units

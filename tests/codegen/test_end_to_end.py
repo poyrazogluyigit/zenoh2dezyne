@@ -8,10 +8,7 @@ import networkx as nx
 
 from src.builders.IGBuilder import InterconnectionGraph
 from src.codegen import CodeGenerator
-from src.datatypes import (
-    TranslationUnit, MainThread, CallbackThread,
-    VarPublisher, SessPublisher,
-)
+from src.datatypes import TranslationUnit, MainThread, Subscriber, Publisher
 from src.graphutils import JoernCFG
 
 from ..mock_data import main_flow, put_callback
@@ -22,10 +19,12 @@ def _make_tu(file_name: str) -> TranslationUnit:
         file_name=file_name,
         main_thread=MainThread(cfg=JoernCFG(main_flow)),
         callback_threads=[
-            CallbackThread(name="callback", key_expr="basic/X/Y", cfg=JoernCFG(put_callback))
+            Subscriber(name="callback", topic="basic/X/Y", cfg=JoernCFG(put_callback))
         ],
-        var_publishers=[VarPublisher(var="A_pub", key_expr="example/topic/var_out")],
-        sess_publishers=[SessPublisher(var="session", key_exprs=["example/topic/session_out"])],
+        publishers=[
+            Publisher(symbol="A_pub", topic="example/topic/var_out"),
+            Publisher(symbol="session", topic="example/topic/session_out"),
+        ],
     )
 
 

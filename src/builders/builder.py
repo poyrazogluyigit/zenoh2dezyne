@@ -1,7 +1,7 @@
 import logging
 
 from ..frontend.api import JoernQueryAPI
-from ..datatypes import CallbackThread, MainThread, TranslationUnit, VarPublisher, SessPublisher
+from ..datatypes import TranslationUnit
 from ..graphutils import JoernCFG
 
 from .TUBuilder import TUBuilder
