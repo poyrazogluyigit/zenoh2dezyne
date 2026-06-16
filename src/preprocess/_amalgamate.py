@@ -1,3 +1,4 @@
+import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -29,11 +30,13 @@ class QuomAmalgamator(Amalgamator):
         """
         Amalgamate a source file using quom.
 
-        To be implemented in Task 3.
-
         Args:
             entry: Entry point file to amalgamate
             out_path: Output path for the amalgamated file
             search_dirs: List of directories to search for dependencies
         """
-        pass
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        argv = ["quom", str(entry), str(out_path)]
+        for d in search_dirs:
+            argv += ["-I", str(d), "-S", str(d)]
+        subprocess.run(argv, check=True)
