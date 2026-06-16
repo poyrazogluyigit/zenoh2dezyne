@@ -1,5 +1,5 @@
 #include <thread>
-#include "zenoh.hxx"    // IWYU pragma: keep
+#include <zenoh.hxx>  // IWYU pragma: keep
 
 int main() {
 

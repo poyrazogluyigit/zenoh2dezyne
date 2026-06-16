@@ -37,12 +37,14 @@ class Connection:
     def start(self, timeout: int = 60):
         """Start the Joern Server process and wait for it to be ready."""
         logger.debug("Starting Joern server process...")
-        self.proc = Popen(['joern', '--server'],
+        argv = ['joern', '--server']
+        if self.cwd:
+            argv.extend(['--workspace', str(self.cwd / 'workspace')])
+        self.proc = Popen(argv,
                           stdin=PIPE,
                           stdout=PIPE,
                           stderr=PIPE,
-                          text=True,
-                          cwd=self.cwd)
+                          text=True)
 
         start_time = time.time()
         while True:

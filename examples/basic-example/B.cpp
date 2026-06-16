@@ -1,5 +1,5 @@
 #include <thread>
-#include "zenoh.hxx"    // IWYU pragma: keep
+#include <zenoh.hxx>    // IWYU pragma: keep
 
 void C_callback(const zenoh::Sample&) {
     return;

@@ -11,3 +11,4 @@ joern_includes/
 generate/
 .github
 workspace/
+out/
