@@ -1,11 +1,7 @@
 """ROS2 (rclcpp) middleware extractor."""
-from ...datatypes import Publisher, Subscriber, ServiceEndpoint
+from ...datatypes import Publisher, Subscriber
 from .base import BaseExtractor
-from ._ros_common import (
-    extract_handle_publishers,
-    extract_callback_subscribers,
-    extract_service_endpoints,
-)
+from ._ros_common import extract_handle_publishers, extract_callback_subscribers
 
 
 class Ros2Extractor(BaseExtractor):
@@ -17,9 +13,3 @@ class Ros2Extractor(BaseExtractor):
 
     def extract_subscribers(self, client, file: str) -> list[Subscriber]:
         return extract_callback_subscribers(client, file, "create_subscription")
-
-    def extract_services(self, client, file: str) -> list[ServiceEndpoint]:
-        return (
-            extract_service_endpoints(client, file, "create_service", "server")
-            + extract_service_endpoints(client, file, "create_client", "client")
-        )

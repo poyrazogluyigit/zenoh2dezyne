@@ -1,5 +1,5 @@
 """Zenoh middleware extractor."""
-from ...datatypes import Publisher, Subscriber, ServiceEndpoint
+from ...datatypes import Publisher, Subscriber
 from ...graphutils import JoernCFG
 from .base import BaseExtractor
 
@@ -78,28 +78,6 @@ class ZenohExtractor(BaseExtractor):
             Subscriber(name=d["callback"], topic=d["topic"], cfg=JoernCFG(d["dotGraph"]))
             for d in data
         ]
-
-    def extract_services(self, client, file: str) -> list[ServiceEndpoint]:
-        # Queryables (server) and session.get (client) are both invoked on the
-        # session. Scope to the discovered session variable — mirroring the
-        # session.put query — so a bare `.get(...)` from std containers/optionals
-        # is not mistaken for a Zenoh query client.
-        servers = client.run_query(self._session_scoped_query(file, "declare_queryable"))
-        clients = client.run_query(self._session_scoped_query(file, "get"))
-        return (
-            [ServiceEndpoint(role="server", name=k, topic=k, cfg=None) for k in servers]
-            + [ServiceEndpoint(role="client", name=k, topic=k, cfg=None) for k in clients]
-        )
-
-    @staticmethod
-    def _session_scoped_query(file: str, call_name: str) -> str:
-        """A query for ``call_name`` calls whose receiver is a session variable."""
-        return (
-            f'cpg.call.code(".*zenoh::Session::open\\\\(.*").where(_.file.name("{file}"))'
-            f'.inAssignment.target.code.flatMap {{ sv =>'
-            f' cpg.call.name("{call_name}").where(_.file.name("{file}"))'
-            f'.where(_.argument(0).codeExact(sv)).argument(1).code.l }}.l'
-        )
 
     def resolve_publish_topic(self, node_code: str, publishers: list[Publisher]) -> str | None:
         """Resolve a Zenoh ``put`` CFG node's code to a topic.

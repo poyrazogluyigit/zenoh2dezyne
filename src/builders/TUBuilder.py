@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 class TUBuilder:
     """Assembles neutral TranslationUnits from a JoernClient + a middleware extractor.
 
-    Orchestration is framework-agnostic: the extractor supplies publishers,
-    subscribers and services; this builder fetches CFGs, normalizes their
-    publish nodes, and packages everything into TranslationUnits.
+    Orchestration is framework-agnostic: the extractor supplies publishers and
+    subscribers; this builder fetches CFGs, normalizes their publish nodes, and
+    packages everything into TranslationUnits.
     """
 
     def __init__(self, client: JoernClient, extractor: MiddlewareExtractor):
@@ -26,7 +26,6 @@ class TUBuilder:
         for file_name in self.client.get_files():
             publishers = self.extractor.extract_publishers(self.client, file_name)
             subscribers = self.extractor.extract_subscribers(self.client, file_name)
-            services = self.extractor.extract_services(self.client, file_name)
 
             main_cfg = JoernCFG(self.client.get_cfg_as_dot(file_name, "main")[0])
             normalize_publish_nodes(main_cfg, self.extractor, publishers)
@@ -38,6 +37,5 @@ class TUBuilder:
                 main_thread=MainThread(cfg=main_cfg),
                 callback_threads=subscribers,
                 publishers=publishers,
-                services=services,
             ))
         return units

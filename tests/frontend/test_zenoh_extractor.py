@@ -67,16 +67,6 @@ class TestZenohExtractor(unittest.TestCase):
         # bare "session" is NOT special anymore when it isn't a discovered session var
         self.assertIsNone(ext.resolve_publish_topic('session.put("x", payload)', []))
 
-    def test_service_queries_are_session_scoped(self):
-        client = FakeJoernClient({
-            "declare_queryable": [],
-            'name("get")': [],
-        })
-        ZenohExtractor().extract_services(client, "A.cpp")
-        get_query = next(q for q in client.queries if 'name("get")' in q)
-        self.assertIn("Session::open", get_query)
-        self.assertIn("codeExact", get_query)
-
 
 if __name__ == "__main__":
     unittest.main()

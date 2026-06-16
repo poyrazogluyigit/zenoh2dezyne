@@ -31,18 +31,8 @@ class Publisher:
 
 
 @dataclass
-class ServiceEndpoint:
-    """A request/reply endpoint. ``role`` is "server" or "client"."""
-    role: str
-    name: str
-    topic: str
-    cfg: JoernCFG | None = None
-
-
-@dataclass
 class TranslationUnit:
     file_name: str
     main_thread: MainThread
     callback_threads: list[Subscriber] = field(default_factory=list)
     publishers: list[Publisher] = field(default_factory=list)
-    services: list[ServiceEndpoint] = field(default_factory=list)
