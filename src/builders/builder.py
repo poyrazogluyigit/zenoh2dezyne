@@ -17,6 +17,22 @@ class Builder:
     def __init__(self, client: JoernClient):
         self.client = client
 
+    def build(self, middleware: str = "zenoh") -> InterconnectionGraph:
+        """Build TranslationUnits and InterconnectionGraph without importing.
+
+        Args:
+            middleware: Which extractor to use ("zenoh", "ros1", "ros2", ...).
+
+        Returns:
+            The interconnection graph for the project.
+        """
+        extractor = get_extractor(middleware)
+        logger.debug("Building Translation Unit structures with %s extractor", extractor.name)
+        translation_units = TUBuilder(self.client, extractor).build()
+        logger.debug("Building interconnection graph")
+        graph = IGBuilder(translation_units).build()
+        return InterconnectionGraph(graph)
+
     def buildProject(
         self,
         project_name: str,
@@ -45,9 +61,4 @@ class Builder:
             logger.debug(f"Opening Joern project '{project_name}'")
             self.client.open_project(project_name)
 
-        extractor = get_extractor(middleware)
-        logger.debug("Building Translation Unit structures with %s extractor", extractor.name)
-        translation_units = TUBuilder(self.client, extractor).build()
-        logger.debug("Building interconnection graph")
-        graph = IGBuilder(translation_units).build()
-        return InterconnectionGraph(graph)
+        return self.build(middleware)
