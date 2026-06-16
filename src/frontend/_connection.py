@@ -4,6 +4,7 @@ This module is not part of the public API. Use frontend._lifecycle.JoernConnecti
 """
 import logging
 from subprocess import Popen, PIPE
+from pathlib import Path
 import requests
 import time
 import atexit
@@ -13,12 +14,13 @@ logger = logging.getLogger(__name__)
 
 class Connection:
     """Low-level Joern HTTP connection manager.
-    
+
     This class is private and subject to change. Use JoernConnection from _lifecycle instead.
     """
-    def __init__(self, joern_server: str = ""):
+    def __init__(self, joern_server: str = "", workspace_dir=None):
         self.proc = None
         self.joern_server = joern_server
+        self.cwd = Path(workspace_dir).parent if workspace_dir else None
         self.session = requests.Session()
         self.start()
 
@@ -35,11 +37,12 @@ class Connection:
     def start(self, timeout: int = 60):
         """Start the Joern Server process and wait for it to be ready."""
         logger.debug("Starting Joern server process...")
-        self.proc = Popen(['joern', '--server'], 
-                          stdin=PIPE, 
-                          stdout=PIPE, 
-                          stderr=PIPE, 
-                          text=True)
+        self.proc = Popen(['joern', '--server'],
+                          stdin=PIPE,
+                          stdout=PIPE,
+                          stderr=PIPE,
+                          text=True,
+                          cwd=self.cwd)
 
         start_time = time.time()
         while True:

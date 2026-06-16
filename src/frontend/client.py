@@ -24,12 +24,14 @@ class JoernClient:
     def __exit__(self, *_):
         self.close()
 
-    def __init__(self, joern_server: str = ""):
+    def __init__(self, joern_server: str = "", workspace_dir=None):
         """Args:
             joern_server: URL of Joern server (e.g., "http://localhost:8080").
                           If empty, a local Joern server is started.
+            workspace_dir: Optional path to the workspace directory. If provided,
+                          Joern will be started with cwd set to the parent directory.
         """
-        self._connection = Connection(joern_server)
+        self._connection = Connection(joern_server, workspace_dir=workspace_dir)
 
     def _send_query(self, query: str) -> str:
         """Send a raw Joern query string and return the raw stdout."""
@@ -70,6 +72,15 @@ class JoernClient:
         return self._send_query(
             f'importCode(inputPath="{input_path}", projectName="{project_name}")'
         )
+
+    def delete_project(self, project_name: str) -> str:
+        """Delete a project by name for idempotent re-imports.
+
+        Best-effort delete so re-import over an existing <out> is idempotent.
+        Returns the raw query result without JSON parsing.
+        """
+        logger.debug(f"Deleting Joern project: {project_name}")
+        return self._send_query(f'delete("{project_name}")')
 
     @_query
     def get_files(self):
