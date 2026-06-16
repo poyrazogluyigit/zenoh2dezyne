@@ -18,11 +18,6 @@ from ..datatypes import TranslationUnit
 #   Add directed edges corresponding to its published topics
 # We need ordered tuples for adding these directed edges
 
-@dataclass
-class IGNode:
-    id: int
-    unit: TranslationUnit
-
 class InterconnectionGraph:
     graph: nx.MultiDiGraph
 
@@ -31,20 +26,6 @@ class InterconnectionGraph:
     
     def __iter__(self):
         return iter(self.graph.nodes(data=True))
-    
-    def getSuccessors(self, node_id: int) -> list[int]:
-        """Returns a list of successor node IDs for the given node ID."""
-        if node_id in self.graph:
-            return list(self.graph.successors(node_id))
-        else:
-            raise ValueError(f"Node ID {node_id} not found in Interconnection Graph")
-    
-    def getPredecessors(self, node_id: int) -> list[int]:
-        """Returns a list of predecessor node IDs for the given node ID."""
-        if node_id in self.graph:
-            return list(self.graph.predecessors(node_id))
-        else:
-            raise ValueError(f"Node ID {node_id} not found in Interconnection Graph")
     
 
 

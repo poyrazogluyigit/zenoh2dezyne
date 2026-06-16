@@ -69,19 +69,6 @@ def _branch_signal(thread: str, source: int, target: int) -> str:
 def _render_state_for_thread(thread: str, state: State) -> tuple[list[Guard], list[str]]:
     """Translate one mid-IR ``State`` into Dezyne ``Guard`` nodes plus the
     branch-signal event names that those guards fire.
-
-    Dispatch policy (the semantic core of the generator):
-
-    - ``OutEvent(topic)``     -> ``Action(mangle_topic(topic))``
-    - ``DeferTo(target)``     -> if ``target == thread``: skip (we're already on
-                                  that thread); else assign the thread var and
-                                  reset our own state variable to 1 so the next
-                                  entry restarts the thread.
-    - ``ChangeStateTo(next)`` -> handled by appending ``s_<thread> = next`` to
-                                  each guard's body. Multiple successors become
-                                  multiple sibling guards (nondeterministic);
-                                  each branch also fires an out-event signal so
-                                  the verifier can observe which one was taken.
     """
     inline_stmts: list[ASTNode] = []
     parks = False
@@ -157,26 +144,8 @@ def state_machines_to_code(
     if "main" in threads:
         threads = ["main"] + [t for t in threads if t != "main"]
 
-    # Pass 1: collect out events (mangled topics).
-    # Source 1 — topics actually `.put()`'d in some state machine.
-    # Source 2 — topics declared via `declare_publisher` or `session.put` even
-    #            if never fired. These must still be advertised so the IG's
-    #            routing edges into this unit reference a known event.
-    out_topics: list[str] = []
-    seen_topics: set[str] = set()
-    for sm in state_machines.values():
-        for st in sm.states:
-            for s in st.statements:
-                if isinstance(s, OutEvent):
-                    m = mangle_topic(s.key_expr)
-                    if m not in seen_topics:
-                        seen_topics.add(m)
-                        out_topics.append(m)
-    for t in declared_topics:
-        m = mangle_topic(t)
-        if m not in seen_topics:
-            seen_topics.add(m)
-            out_topics.append(m)
+    # Remove multiple instances of publishers publishing to the same topic
+    out_topics: list[str] = list(set(declared_topics))
 
     # Pass 2: render guards and collect the branch-signal names they introduce.
     per_thread_guards: dict[str, list[Guard]] = {}
@@ -263,7 +232,7 @@ class CodeGenerator:
         self.network: File | None = None
         self.top: File | None = None
 
-    def generate(self, model: InterconnectionGraph, single_stepper: bool = False):
+    def generate(self, model: InterconnectionGraph):
         """Generate Dezyne code from the given interconnection graph.
 
         Populates ``self.unit_files``, ``self.stepper``, ``self.network`` and
@@ -296,17 +265,6 @@ class CodeGenerator:
             unit_out_topics[result.name] = result.out_topics
             unit_in_topics[result.name] = result.in_topics
 
-        # Orphan-subscriber check: any in-topic that no unit publishes is dead
-        # at the Network level. Keep the declaration (it reflects the source's
-        # intent), but warn so the user notices.
-        all_published: set[str] = {t for tops in unit_out_topics.values() for t in tops}
-        for u, ins in unit_in_topics.items():
-            for t in ins:
-                if t not in all_published:
-                    logger.warning(
-                        "Unit %s subscribes to topic %r but no unit publishes it — "
-                        "the on-%s trigger will never fire.", u, t, t,
-                    )
 
         self.unit_files = unit_files
         self.stepper = _generate_stepper()
@@ -314,9 +272,8 @@ class CodeGenerator:
             model, unit_by_id,
             unit_signals=unit_signals,
             unit_out_topics=unit_out_topics,
-            single_stepper=single_stepper,
         )
-        self.top = _generate_top_model(model, unit_by_id, single_stepper=single_stepper)
+        self.top = _generate_top_model(model, unit_by_id)
         return unit_files, self.stepper, self.network, self.top
 
     def printToOutput(self):

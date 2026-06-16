@@ -39,7 +39,6 @@ def _generate_network_elt(
     unit_by_id: dict[int, str],
     unit_signals: dict[str, list[str]] | None = None,
     unit_out_topics: dict[str, list[str]] | None = None,
-    single_stepper: bool = False,
 ) -> File:
     """Produce ``Network.dzn``: an ``INetCtl`` interface and a ``Network`` component
     that routes every published topic to its subscribing units and dispatches
@@ -72,11 +71,8 @@ def _generate_network_elt(
     provides = [Provides("INetCtl", "ctl")]
     requires = [Requires(f"I{u}", u) for u in units]
 
-    if single_stepper:
-        requires.append(Requires("IStep", "s"))
-    else:
-        for i, _ in enumerate(units, start=1):
-            requires.append(Requires("IStep", f"s{i}"))
+    for i, _ in enumerate(units, start=1):
+        requires.append(Requires("IStep", f"s{i}"))
 
     bhv_statements: list = [Trigger("ctl.kick()", Block([]))]
 
@@ -108,16 +104,8 @@ def _generate_network_elt(
         for sig in unit_signals.get(u, []):
             bhv_statements.append(Trigger(f"{u}.{sig}()", Block([])))
 
-    if single_stepper:
-        bhv_statements.append(
-            Trigger(
-                "s.step()",
-                Block([Action(f"{u}.step()") for u in units]),
-            )
-        )
-    else:
-        for i, u in enumerate(units, start=1):
-            bhv_statements.append(Trigger(f"s{i}.step()", Action(f"{u}.step()")))
+    for i, u in enumerate(units, start=1):
+        bhv_statements.append(Trigger(f"s{i}.step()", Action(f"{u}.step()")))
 
     net_comp = Component(
         name="Network",
@@ -132,7 +120,6 @@ def _generate_network_elt(
 def _generate_top_model(
     model: InterconnectionGraph,
     unit_by_id: dict[int, str],
-    single_stepper: bool = False,
 ) -> File:
     """Produce ``Top.dzn``: a system block that instantiates the Network, the
     units' components, and the steppers, plus the bindings between them."""
@@ -146,13 +133,9 @@ def _generate_top_model(
     bindings: list[Binding] = [Binding("net_ctl", "net.ctl")]
     bindings.extend(Binding(f"{u}_comp.{u}_top", f"net.{u}") for u in units)
 
-    if single_stepper:
-        instances.append(Instance("Step", "s"))
-        bindings.append(Binding("net.s", "s.step"))
-    else:
-        for i, _ in enumerate(units, start=1):
-            instances.append(Instance("Step", f"s{i}"))
-            bindings.append(Binding(f"net.s{i}", f"s{i}.step"))
+    for i, _ in enumerate(units, start=1):
+        instances.append(Instance("Step", f"s{i}"))
+        bindings.append(Binding(f"net.s{i}", f"s{i}.step"))
 
     top_comp = Component(
         name="Top",

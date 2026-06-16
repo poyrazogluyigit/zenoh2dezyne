@@ -28,6 +28,7 @@ class BaseExtractor:
     name: str = ""
     publish_call_names: frozenset[str] = frozenset()
 
+    # FIXME pointer/variable thing may happen on both zenoh and ros; investigate
     def resolve_publish_topic(self, node_code: str, publishers: list[Publisher]) -> str | None:
         """Default: the publish receiver is a handle created with the topic.
 

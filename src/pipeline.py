@@ -21,7 +21,6 @@ class Pipeline:
         client: JoernClient for code analysis.
         amalgamator: Amalgamator for merging source files.
         middleware: Middleware name for extraction ("zenoh", "ros1", "ros2", ...).
-        single_stepper: Whether to generate a single stepper component.
         nodes: List of detected .cpp files defining main().
         graph: InterconnectionGraph built from code analysis.
         codegen: CodeGenerator instance for Dezyne output.
@@ -30,7 +29,6 @@ class Pipeline:
     client: JoernClient
     amalgamator: Amalgamator
     middleware: str = "zenoh"
-    single_stepper: bool = False
     nodes: list[Path] = field(default_factory=list)
     graph: InterconnectionGraph | None = None
     codegen: CodeGenerator | None = None
@@ -69,7 +67,7 @@ def _build(p: Pipeline) -> None:
 def _codegen(p: Pipeline) -> None:
     """Stage 5: Generate Dezyne code from interconnection graph."""
     p.codegen = CodeGenerator(str(p.ctx.models_dir))
-    p.codegen.generate(p.graph, single_stepper=p.single_stepper)
+    p.codegen.generate(p.graph)
 
 
 def _write(p: Pipeline) -> None:

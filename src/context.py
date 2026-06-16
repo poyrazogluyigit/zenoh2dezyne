@@ -18,12 +18,12 @@ class RunContext:
 
     @property
     def workspace_dir(self) -> Path:
-        return self.output_dir / "workspace"
+        return self.output_dir
 
     @property
     def models_dir(self) -> Path:
         return self.output_dir / "models"
 
     def mkdirs(self) -> None:
-        for p in (self.amalgamated_dir, self.workspace_dir, self.models_dir):
+        for p in (self.amalgamated_dir, self.models_dir):
             p.mkdir(parents=True, exist_ok=True)

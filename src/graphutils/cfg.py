@@ -26,13 +26,6 @@ class JoernCFG:
         else:
             raise ValueError(f"Node ID {node_id} not found in CFG")
         
-    def get_data(self, node_id: int) -> dict:
-        """Returns the data dictionary for the given node ID."""
-        if self.graph and node_id in self.graph:
-            return self.graph.nodes[node_id]
-        else:
-            raise ValueError(f"Node ID {node_id} not found in CFG")
-        
     def get_data(self, node_id: int, key: str):
         """Returns the value for the specified key in the node's data dictionary."""
         if self.graph and node_id in self.graph:

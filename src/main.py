@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .context import RunContext
 from .pipeline import Pipeline
-from .preprocess import QuomAmalgamator
+from .preprocess import Amalgamator
 from .frontend import JoernClient
 
 
@@ -39,11 +39,6 @@ def build_parser() -> argparse.ArgumentParser:
         default="zenoh",
         help="Pub/sub middleware of the analyzed project (default: zenoh)",
     )
-    parser.add_argument(
-        "--single-stepper",
-        action="store_true",
-        help="Generate one shared Step component (default: one Step per unit)",
-    )
     return parser
 
 
@@ -69,9 +64,8 @@ def main():
         Pipeline(
             ctx,
             client=client,
-            amalgamator=QuomAmalgamator(),
+            amalgamator=Amalgamator(),
             middleware=args.middleware,
-            single_stepper=args.single_stepper,
         ).run()
 
     logging.info("Code generation complete")
