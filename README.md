@@ -15,10 +15,9 @@ The repository ships with several example systems for testing and benchmarking:
 In its current state, the code generator generates models for basic-example.
 
 ## Roadmap
+- [x] Append a source file aggregation step before building translation units (using quom)
 - [ ] Re-evaluate existing examples
-- [ ] Add new examples
-- [ ] Append a source file aggregation step before building the translation units
-    - Will likely use quom 
+- [ ] Add new examples 
 
 The examples are inspired by the [BEEM Benchmark Suite](https://github.com/plug-obp/beem-benchmark).
 
@@ -60,7 +59,8 @@ component; the whole system is assembled in `Top`.
 
 - **Python 3.13+** (uses `X | Y` union annotations and the latest `dataclass` semantics).
 - A running **[Joern](https://github.com/joernio/joern)** server (defaults to `http://localhost:8080`).
-- Python dependencies: `networkx`, `requests`, `pyparsing` (transitively pulled in by the included `.venv`, or install manually).
+- **[quom](https://github.com/Viatorus/quom)** for code amalgamation (`pip install quom`).
+- Python dependencies: `networkx`, `requests`, `pydot` (in requirements.txt).
 
 ## Installation
 
@@ -69,7 +69,7 @@ git clone https://github.com/<you>/zenoh2dezyne.git
 cd zenoh2dezyne
 python3.13 -m venv .venv
 source .venv/bin/activate
-pip install networkx requests pyparsing
+pip install networkx requests pydot quom
 ```
 
 Start a Joern server in a separate terminal:
@@ -78,59 +78,49 @@ Start a Joern server in a separate terminal:
 joern --server
 ```
 
-Joern persists projects in its workspace across runs, so once a source tree has
-been imported under a given project name it can be re-opened by name in later
-invocations — see the two CLI modes below.
-
 ## Usage
 
 ```bash
-python -m src.main (--project NAME | --input PATH) \
-    --output <dir> \
-    --joern-server <url> \
-    --logging <LEVEL> \
-    [--single-stepper]
+python -m src.main --input <input-dir> [--output <output-dir>]
 ```
 
-Exactly one of `--project` or `--input` is required:
+Where:
+- `--input/-i` (required): Path to source directory to analyze
+- `--output/-o` (optional): Output directory for all generated files (default: `<cwd>/out`)
+- `--middleware/-m`: Pub/sub middleware (zenoh/ros1/ros2, default: zenoh)
+- `--joern-server`: URL of Joern server (default: http://localhost:8080)
+- `--logging/-l`: Logging level (default: WARNING)
+- `--single-stepper`: Use one shared Step component instead of per-unit (default: off)
 
-- **`--project NAME`** opens an existing Joern project by name. Use this when
-  the source has already been imported in a previous run.
-- **`--input PATH`** runs `importCode` on the source directory at `PATH`. The
-  project name is taken from the directory's basename, so
-  `--input examples/basic-example` registers the project as `basic-example`.
-  A line `creating project with <name>` is printed when this happens.
+### Output Directory Layout
 
-| Flag | Default | Description |
-|---|---|---|
-| `-p, --project` | — | Open an existing Joern project by name. |
-| `-i, --input` | — | Import a source directory; project name = basename. |
-| `-o, --output` | `generate` | Directory to write generated `.dzn` files into. |
-| `--joern-server` | `http://localhost:8080` | URL of the running Joern server. |
-| `-l, --logging` | `WARNING` | Logging verbosity (`DEBUG`/`INFO`/`WARNING`/`ERROR`/`CRITICAL`). |
-| `--single-stepper` | off | Generate one shared `Step` component instead of one per unit. |
+All intermediates and final models are written to the output directory:
 
-### End-to-end example
+```
+<output>/
+├── amalgamated/     # One self-contained .cpp per node (quom output)
+├── workspace/       # Joern's workspace (CPGs, projects)
+└── models/          # Generated .dzn files (final models)
+```
 
-First run — import the source:
+### Example
+
+First run — analyze a multi-file project:
 
 ```bash
-python -m src.main --input examples/basic-example -o /tmp/basic-example-models \
-    --joern-server http://localhost:8080
-# prints: creating project with basic-example
+python -m src.main --input examples/pgm-class-lambda --output /tmp/pgm-models
 ```
 
-Subsequent runs against the same project:
-
-```bash
-python -m src.main --project basic-example -o /tmp/basic-example-models \
-    --joern-server http://localhost:8080
+Results in:
 ```
-
-Produces, in `/tmp/basic-example-models/`:
-
-```
-A.dzn        B.dzn        C.dzn        Network.dzn        Top.dzn        Step.dzn
+/tmp/pgm-models/
+├── amalgamated/
+│   ├── sender.cpp      # sender.cpp + inlined includes
+│   └── receiver.cpp    # receiver.cpp + inlined includes
+├── workspace/
+│   └── pgm-class-lambda/  # Joern project files
+└── models/
+    ├── sender.dzn, receiver.dzn, Network.dzn, Top.dzn, Step.dzn
 ```
 
 ## Generated model shape
