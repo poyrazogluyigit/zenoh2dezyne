@@ -12,6 +12,5 @@ Example:
 
 from .client import JoernClient
 from .extractors import MiddlewareExtractor, get_extractor, EXTRACTORS
-from .api import JoernQueryAPI  # transitional: removed in T4 once builders use JoernClient
 
-__all__ = ["JoernClient", "MiddlewareExtractor", "get_extractor", "EXTRACTORS", "JoernQueryAPI"]
+__all__ = ["JoernClient", "MiddlewareExtractor", "get_extractor", "EXTRACTORS"]

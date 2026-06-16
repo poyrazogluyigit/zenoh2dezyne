@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 
-from .frontend import JoernQueryAPI
+from .frontend import JoernClient
 from .codegen import CodeGenerator
 from .builders import Builder
 
@@ -27,6 +27,10 @@ def main():
     parser.add_argument("--logging", "-l", help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)", default="WARNING")
     parser.add_argument("--joern-server", help="URL of the running Joern server", default="http://localhost:8080")
     parser.add_argument(
+        "--middleware", "-m", choices=["zenoh", "ros1", "ros2"], default="zenoh",
+        help="Pub/sub middleware of the analyzed project (default: zenoh)",
+    )
+    parser.add_argument(
         "--single-stepper", action="store_true",
         help="Generate one shared Step component (default: one Step per unit)",
     )
@@ -46,9 +50,9 @@ def main():
         project_name = args.project
 
     logging.debug("Starting code generation process")
-    with JoernQueryAPI(args.joern_server) as api:
-        builder = Builder(api)
-        graph = builder.buildProject(project_name, input_dir=input_dir)
+    with JoernClient(args.joern_server) as client:
+        builder = Builder(client)
+        graph = builder.buildProject(project_name, input_dir=input_dir, middleware=args.middleware)
         codegen = CodeGenerator(args.output)
         codegen.generate(graph, single_stepper=args.single_stepper)
         codegen.printToOutput()
