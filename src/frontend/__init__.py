@@ -1,14 +1,17 @@
-"""Joern code analysis query API.
+"""Joern code analysis frontend.
 
-Public interface for Joern code graph analysis.
+``JoernClient`` is the generic Joern access layer; middleware-specific
+extraction lives in :mod:`src.frontend.extractors`.
 
 Example:
-    >>> from src.frontend import JoernQueryAPI
-    >>> api = JoernQueryAPI("http://localhost:8080")
-    >>> api.open_project("my-project")
-    >>> publishers = api.get_publishers()
+    >>> from src.frontend import JoernClient, get_extractor
+    >>> with JoernClient("http://localhost:8080") as client:
+    ...     client.open_project("my-project")
+    ...     pubs = get_extractor("zenoh").extract_publishers(client, "A.cpp")
 """
 
-from .api import JoernQueryAPI
+from .client import JoernClient
+from .extractors import MiddlewareExtractor, get_extractor, EXTRACTORS
+from .api import JoernQueryAPI  # transitional: removed in T4 once builders use JoernClient
 
-__all__ = ["JoernQueryAPI"]
+__all__ = ["JoernClient", "MiddlewareExtractor", "get_extractor", "EXTRACTORS", "JoernQueryAPI"]
