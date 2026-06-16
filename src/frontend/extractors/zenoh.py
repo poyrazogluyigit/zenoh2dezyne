@@ -1,5 +1,5 @@
 """Zenoh middleware extractor."""
-from ...datatypes import Publisher, Subscriber
+from ...datatypes import Publisher, Subscriber, ServiceEndpoint
 from ...graphutils import JoernCFG
 from .base import BaseExtractor
 
@@ -71,6 +71,20 @@ class ZenohExtractor(BaseExtractor):
             Subscriber(name=d["callback"], topic=d["topic"], cfg=JoernCFG(d["dotGraph"]))
             for d in data
         ]
+
+    def extract_services(self, client, file: str) -> list[ServiceEndpoint]:
+        # Queryables are request/reply servers; session.get(...) is a client.
+        # Both call names are un-templated, so cpg.call.name(...) matches directly.
+        servers = client.run_query(
+            f'cpg.call.name("declare_queryable").where(_.file.name("{file}")).argument(1).code.l'
+        )
+        clients = client.run_query(
+            f'cpg.call.name("get").where(_.file.name("{file}")).argument(1).code.l'
+        )
+        return (
+            [ServiceEndpoint(role="server", name=k, topic=k, cfg=None) for k in servers]
+            + [ServiceEndpoint(role="client", name=k, topic=k, cfg=None) for k in clients]
+        )
 
     def resolve_publish_topic(self, node_code: str, publishers: list[Publisher]) -> str | None:
         """Resolve a Zenoh ``put`` CFG node's code to a topic.

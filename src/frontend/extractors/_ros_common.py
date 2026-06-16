@@ -10,7 +10,7 @@ shape, differing only in call names (``advertise``/``create_publisher``,
 """
 import re
 
-from ...datatypes import Publisher, Subscriber
+from ...datatypes import Publisher, Subscriber, ServiceEndpoint
 from ...graphutils import JoernCFG
 
 _QUOTED = re.compile(r'"([^"]*)"')
@@ -49,6 +49,23 @@ def extract_handle_publishers(client, file: str, call_name: str) -> list[Publish
             if topic is not None:
                 publishers.append(Publisher(symbol=handle, topic=topic))
     return publishers
+
+
+def extract_service_endpoints(client, file: str, call_name: str, role: str) -> list[ServiceEndpoint]:
+    """Service server/client endpoints, anchored on the enclosing assignment
+    (templated ``create_service<Srv>(...)`` is misparsed, same as publishers)."""
+    data = client.run_query(
+        f'cpg.assignment.where(_.file.name("{file}"))'
+        f'.where(_.code(".*{call_name}.*"))'
+        f'.map {{ a => (a.target.code, a.ast.isLiteral.code.l) }}'
+    )
+    endpoints: list[ServiceEndpoint] = []
+    for item in data:
+        for _handle, literals in item.items():
+            name = _first_quoted(literals)
+            if name is not None:
+                endpoints.append(ServiceEndpoint(role=role, name=name, topic=name, cfg=None))
+    return endpoints
 
 
 def extract_callback_subscribers(client, file: str, call_name: str) -> list[Subscriber]:
