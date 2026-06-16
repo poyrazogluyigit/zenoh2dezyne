@@ -22,7 +22,9 @@ class Connection:
         self.joern_server = joern_server or "http://localhost:8080"
         self.workspace_dir = Path(workspace_dir) if workspace_dir else None
         self.session = requests.Session()
-        if not joern_server:
+        # If workspace_dir is provided, always spawn a new Joern with that workspace
+        # Otherwise, only spawn if joern_server was not provided
+        if workspace_dir or not joern_server:
             self.start()
         else:
             self._wait_for_server()

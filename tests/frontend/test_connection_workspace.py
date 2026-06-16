@@ -8,30 +8,30 @@ from src.frontend.client import JoernClient
 
 class TestConnectionWorkspace(unittest.TestCase):
     @mock.patch("src.frontend._connection.Connection.start")
-    def test_workspace_dir_sets_cwd(self, _start):
-        """workspace_dir parameter should set cwd to its parent directory."""
+    def test_workspace_dir_is_stored(self, _start):
+        """workspace_dir parameter should be stored as a Path."""
         c = Connection("http://localhost:8080", workspace_dir=Path("/tmp/out/workspace"))
-        self.assertEqual(c.cwd, Path("/tmp/out"))
+        self.assertEqual(c.workspace_dir, Path("/tmp/out/workspace"))
 
     @mock.patch("src.frontend._connection.Connection.start")
-    def test_workspace_dir_none_sets_cwd_none(self, _start):
-        """When workspace_dir is None, cwd should be None."""
+    def test_workspace_dir_none_stored(self, _start):
+        """When workspace_dir is None, it should be stored as None."""
         c = Connection("http://localhost:8080", workspace_dir=None)
-        self.assertIsNone(c.cwd)
+        self.assertIsNone(c.workspace_dir)
 
     @mock.patch("src.frontend._connection.Connection.start")
-    def test_workspace_dir_default_sets_cwd_none(self, _start):
-        """When workspace_dir is not provided, cwd should be None."""
+    def test_workspace_dir_default_none(self, _start):
+        """When workspace_dir is not provided, it should be None."""
         c = Connection("http://localhost:8080")
-        self.assertIsNone(c.cwd)
+        self.assertIsNone(c.workspace_dir)
 
 
 
-class TestConnectionStartWithCwd(unittest.TestCase):
+class TestConnectionStartWithWorkspace(unittest.TestCase):
     @mock.patch("src.frontend._connection.Popen")
     @mock.patch("src.frontend._connection.requests.Session")
-    def test_start_passes_cwd_to_popen(self, mock_session, mock_popen):
-        """The start() method should pass cwd parameter to Popen."""
+    def test_start_includes_workspace_flag(self, mock_session, mock_popen):
+        """The start() method should include --workspace flag in argv."""
         mock_proc = mock.Mock()
         mock_proc.poll.return_value = None
         mock_popen.return_value = mock_proc
@@ -42,41 +42,42 @@ class TestConnectionStartWithCwd(unittest.TestCase):
 
         c = Connection.__new__(Connection)
         c.joern_server = "http://localhost:8080"
-        c.cwd = Path("/tmp/out")
+        c.workspace_dir = Path("/tmp/out/workspace")
         c.session = mock_session_instance
         c.proc = None
 
         c.start()
 
-        # Verify that Popen was called with cwd parameter
+        # Verify that Popen was called with --workspace flag
         mock_popen.assert_called_once()
-        call_kwargs = mock_popen.call_args[1]
-        self.assertEqual(call_kwargs.get("cwd"), Path("/tmp/out"))
+        call_args = mock_popen.call_args[0][0]
+        self.assertIn("--workspace", call_args)
+        self.assertIn("/tmp/out/workspace", call_args)
 
     @mock.patch("src.frontend._connection.Popen")
     @mock.patch("src.frontend._connection.requests.Session")
-    def test_start_passes_none_cwd_to_popen(self, mock_session, mock_popen):
-        """The start() method should pass cwd=None to Popen when cwd is None."""
+    def test_start_no_workspace_flag_when_none(self, mock_session, mock_popen):
+        """The start() method should not include --workspace flag when workspace_dir is None."""
         mock_proc = mock.Mock()
         mock_proc.poll.return_value = None
         mock_popen.return_value = mock_proc
 
         mock_session_instance = mock.Mock()
-        mock_session.return_value = mock.Mock()
+        mock_session.return_value = mock_session_instance
         mock_session_instance.get.return_value = mock.Mock()
 
         c = Connection.__new__(Connection)
         c.joern_server = "http://localhost:8080"
-        c.cwd = None
+        c.workspace_dir = None
         c.session = mock_session_instance
         c.proc = None
 
         c.start()
 
-        # Verify that Popen was called with cwd=None
+        # Verify that Popen was called without --workspace flag
         mock_popen.assert_called_once()
-        call_kwargs = mock_popen.call_args[1]
-        self.assertIsNone(call_kwargs.get("cwd"))
+        call_args = mock_popen.call_args[0][0]
+        self.assertNotIn("--workspace", call_args)
 
 
 class TestJoernClientWorkspace(unittest.TestCase):
@@ -84,19 +85,19 @@ class TestJoernClientWorkspace(unittest.TestCase):
     def test_joern_client_passes_workspace_dir_to_connection(self, _start):
         """JoernClient.__init__ should pass workspace_dir to Connection."""
         client = JoernClient("http://localhost:8080", workspace_dir=Path("/tmp/out/workspace"))
-        self.assertEqual(client._connection.cwd, Path("/tmp/out"))
+        self.assertEqual(client._connection.workspace_dir, Path("/tmp/out/workspace"))
 
     @mock.patch("src.frontend._connection.Connection.start")
     def test_joern_client_workspace_dir_none(self, _start):
-        """JoernClient with workspace_dir=None should result in cwd=None."""
+        """JoernClient with workspace_dir=None should result in workspace_dir=None."""
         client = JoernClient("http://localhost:8080", workspace_dir=None)
-        self.assertIsNone(client._connection.cwd)
+        self.assertIsNone(client._connection.workspace_dir)
 
     @mock.patch("src.frontend._connection.Connection.start")
     def test_joern_client_default_workspace_dir(self, _start):
-        """JoernClient with no workspace_dir should result in cwd=None."""
+        """JoernClient with no workspace_dir should result in workspace_dir=None."""
         client = JoernClient("http://localhost:8080")
-        self.assertIsNone(client._connection.cwd)
+        self.assertIsNone(client._connection.workspace_dir)
 
 
 class TestJoernClientDeleteProject(unittest.TestCase):
