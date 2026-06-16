@@ -1,0 +1,39 @@
+from abc import ABC, abstractmethod
+from pathlib import Path
+
+
+class Amalgamator(ABC):
+    """Abstract base class for file amalgamation strategies."""
+
+    @abstractmethod
+    def amalgamate(
+        self, entry: Path, out_path: Path, search_dirs: list[Path]
+    ) -> None:
+        """
+        Amalgamate a source file by resolving and inlining its dependencies.
+
+        Args:
+            entry: Entry point file to amalgamate
+            out_path: Output path for the amalgamated file
+            search_dirs: List of directories to search for dependencies
+        """
+        ...
+
+
+class QuomAmalgamator(Amalgamator):
+    """Amalgamator using quom for C++ preprocessing and inlining."""
+
+    def amalgamate(
+        self, entry: Path, out_path: Path, search_dirs: list[Path]
+    ) -> None:
+        """
+        Amalgamate a source file using quom.
+
+        To be implemented in Task 3.
+
+        Args:
+            entry: Entry point file to amalgamate
+            out_path: Output path for the amalgamated file
+            search_dirs: List of directories to search for dependencies
+        """
+        pass
