@@ -1,8 +1,11 @@
 import unittest
 from unittest import mock
 from pathlib import Path
+import tempfile
 from src.pipeline import Pipeline, STAGES, _detect, _amalgamate, _import, _build, _codegen, _write
 from src.context import RunContext
+from tests.fixtures import make_multifile_project, FakeAmalgamator, StubJoernClient
+from src.builders import InterconnectionGraph
 
 
 class TestPipelineOrder(unittest.TestCase):
@@ -53,6 +56,69 @@ class TestPipelineOrder(unittest.TestCase):
                 _detect(p)
 
         self.assertEqual(p.nodes, mock_nodes)
+
+    def test_endtoend_multifile_with_fakes(self):
+        """End-to-end pipeline test with synthetic project and fakes.
+
+        Verifies:
+        - Detect finds alpha.cpp and beta.cpp (no util.cpp)
+        - Amalgamate merges util lib into each node
+        - Import is called with amalgamated dir
+        - Build uses mocked Builder
+        - Codegen and write produce output
+        """
+        with tempfile.TemporaryDirectory() as d:
+            root = make_multifile_project(Path(d) / "proj")
+            ctx = RunContext(root, Path(d) / "out")
+            client = StubJoernClient(files=["alpha.cpp", "beta.cpp"])
+
+            # Run pipeline with mocked Builder
+            with mock.patch("src.pipeline.Builder") as builder_mock:
+                # Create a mock graph for codegen to use
+                graph_mock = mock.Mock()
+                builder_mock.return_value.build.return_value = graph_mock
+
+                # Create a mock codegen to avoid real code generation
+                with mock.patch("src.pipeline.CodeGenerator") as codegen_mock:
+                    codegen_instance = mock.Mock()
+                    codegen_mock.return_value = codegen_instance
+
+                    Pipeline(ctx, client=client, amalgamator=FakeAmalgamator()).run()
+
+                    # Verify Builder.build() was called
+                    builder_mock.assert_called_once()
+                    # Verify CodeGenerator was instantiated with models_dir
+                    codegen_mock.assert_called_once_with(str(ctx.models_dir))
+                    # Verify codegen.generate() was called
+                    codegen_instance.generate.assert_called_once()
+                    # Verify codegen.printToOutput() was called
+                    codegen_instance.printToOutput.assert_called_once()
+
+            # Verify amalgamated files exist and contain merged content
+            alpha_amalg = ctx.amalgamated_dir / "alpha.cpp"
+            beta_amalg = ctx.amalgamated_dir / "beta.cpp"
+
+            self.assertTrue(alpha_amalg.exists(), "alpha.cpp should be amalgamated")
+            self.assertTrue(beta_amalg.exists(), "beta.cpp should be amalgamated")
+
+            alpha_content = alpha_amalg.read_text()
+            beta_content = beta_amalg.read_text()
+
+            # Verify util.cpp content was inlined (ping() appears in both)
+            self.assertIn("ping()", alpha_content, "alpha.cpp should contain inlined lib")
+            self.assertIn("ping()", beta_content, "beta.cpp should contain inlined lib")
+
+            # Verify lib/util.cpp did NOT become its own node (only alpha/beta are entry points)
+            util_amalg = ctx.amalgamated_dir / "util.cpp"
+            self.assertFalse(util_amalg.exists(), "util.cpp should not be a standalone node")
+
+            # Verify models dir was created
+            self.assertTrue(ctx.models_dir.exists(), "models directory should be created")
+
+            # Verify Joern client was called (imported is set by import_code)
+            self.assertIsNotNone(client.imported, "Client should have recorded import_code call")
+            path, name = client.imported
+            self.assertEqual(name, ctx.project_name, f"Project name should be '{ctx.project_name}'")
 
 
 if __name__ == "__main__":
