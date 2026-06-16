@@ -10,3 +10,4 @@ joern_includes/
 **/__pycache__
 generate/
 .github
+workspace/
