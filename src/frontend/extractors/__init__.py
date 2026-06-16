@@ -5,9 +5,13 @@ resolve a name before deferring here.
 """
 from .base import MiddlewareExtractor, BaseExtractor
 from .zenoh import ZenohExtractor
+from .ros1 import Ros1Extractor
+from .ros2 import Ros2Extractor
 
 EXTRACTORS: dict[str, type] = {
     "zenoh": ZenohExtractor,
+    "ros1": Ros1Extractor,
+    "ros2": Ros2Extractor,
 }
 
 

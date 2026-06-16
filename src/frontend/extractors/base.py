@@ -21,9 +21,9 @@ class MiddlewareExtractor(Protocol):
 
 
 class BaseExtractor:
-    """Default implementations for optional primitives.
+    """Default implementations for optional primitives and common resolution.
 
-    Concrete extractors inherit this only to pick up safe no-op defaults; new
+    Concrete extractors inherit this to pick up safe no-op defaults; new
     optional primitives (e.g. actions, liveliness) land here as defaulted
     methods so existing extractors need no changes.
     """
@@ -32,3 +32,14 @@ class BaseExtractor:
 
     def extract_services(self, client, file: str) -> list[ServiceEndpoint]:
         return []
+
+    def resolve_publish_topic(self, node_code: str, publishers: list[Publisher]) -> str | None:
+        """Default: the publish receiver is a handle created with the topic.
+
+        Handles ``handle.publish(...)`` and ``handle->publish(...)`` (ROS uses
+        the arrow form on pointer handles). Frameworks with non-handle publish
+        forms (e.g. Zenoh's ``session.put(literal, ...)``) override this.
+        """
+        receiver = node_code.replace("->", ".").split(".")[0].strip()
+        match = next((p for p in publishers if p.symbol == receiver), None)
+        return match.topic if match else None
