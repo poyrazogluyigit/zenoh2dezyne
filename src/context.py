@@ -17,10 +17,6 @@ class RunContext:
         return self.output_dir / "amalgamated"
 
     @property
-    def workspace_dir(self) -> Path:
-        return self.output_dir
-
-    @property
     def models_dir(self) -> Path:
         return self.output_dir / "models"
 

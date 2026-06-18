@@ -24,14 +24,12 @@ class JoernClient:
     def __exit__(self, *_):
         self.close()
 
-    def __init__(self, joern_server: str = "", workspace_dir=None):
+    def __init__(self, joern_server: str = ""):
         """Args:
             joern_server: URL of Joern server (e.g., "http://localhost:8080").
                           If empty, a local Joern server is started.
-            workspace_dir: Optional path to the workspace directory. If provided,
-                          Joern will be started with cwd set to the parent directory.
         """
-        self._connection = Connection(joern_server, workspace_dir=workspace_dir)
+        self._connection = Connection(joern_server)
 
     def _send_query(self, query: str) -> str:
         """Send a raw Joern query string and return the raw stdout."""

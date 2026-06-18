@@ -57,7 +57,7 @@ class TestNetwork(unittest.TestCase):
         self.assertRegex(code, r"on kick: \{\}")
 
     def test_per_unit_requires_and_stepper(self):
-        code = _generate_network_elt(self.ig, self.unit_by_id, single_stepper=False).to_code()
+        code = _generate_network_elt(self.ig, self.unit_by_id).to_code()
         self.assertIn("requires IA A;", code)
         self.assertIn("requires IB B;", code)
         self.assertIn("requires IC C;", code)
@@ -118,12 +118,6 @@ class TestNetwork(unittest.TestCase):
         self.assertRegex(code, r"on A\.main_branch_1_to_3\(\):\s*\{\}")
         self.assertRegex(code, r"on B\.callback_branch_4_to_5\(\):\s*\{\}")
 
-    def test_single_stepper_collapses_step_dispatch(self):
-        code = _normalize(_generate_network_elt(self.ig, self.unit_by_id, single_stepper=True).to_code())
-        self.assertIn("requires IStep s;", code)
-        # Single trigger that dispatches to every unit's step
-        self.assertRegex(code, r"on s\.step\(\):\s*\{[^}]*A\.step\(\);[^}]*B\.step\(\);[^}]*C\.step\(\);[^}]*\}")
-
 
 class TestTop(unittest.TestCase):
     def setUp(self):
@@ -149,12 +143,6 @@ class TestTop(unittest.TestCase):
         self.assertIn("net.s1 <=> s1.step;", code)
         self.assertIn("net.s2 <=> s2.step;", code)
         self.assertIn("net.s3 <=> s3.step;", code)
-
-    def test_single_stepper(self):
-        code = _generate_top_model(self.ig, self.unit_by_id, single_stepper=True).to_code()
-        self.assertIn("Step s;", code)
-        self.assertIn("net.s <=> s.step;", code)
-        self.assertNotIn("Step s1;", code)
 
 
 if __name__ == "__main__":

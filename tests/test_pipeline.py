@@ -40,7 +40,6 @@ class TestPipelineOrder(unittest.TestCase):
         ctx = RunContext(Path("/in"), Path("/out"))
         p = Pipeline(ctx, client=mock.Mock(), amalgamator=mock.Mock())
         self.assertEqual(p.middleware, "zenoh")
-        self.assertFalse(p.single_stepper)
         self.assertEqual(p.nodes, [])
         self.assertIsNone(p.graph)
         self.assertIsNone(p.codegen)

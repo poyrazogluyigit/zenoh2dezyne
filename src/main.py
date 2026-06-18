@@ -60,7 +60,7 @@ def main():
 
     # Run pipeline
     logging.debug("Starting code generation pipeline")
-    with JoernClient(args.joern_server, workspace_dir=ctx.workspace_dir) as client:
+    with JoernClient(args.joern_server) as client:
         Pipeline(
             ctx,
             client=client,

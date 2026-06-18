@@ -4,7 +4,6 @@ This module is not part of the public API. Use frontend._lifecycle.JoernConnecti
 """
 import logging
 from subprocess import Popen, PIPE, DEVNULL
-from pathlib import Path
 import requests
 import time
 
@@ -16,10 +15,9 @@ class Connection:
 
     This class is private and subject to change. Use JoernConnection from _lifecycle instead.
     """
-    def __init__(self, joern_server: str = "", workspace_dir=None):
+    def __init__(self, joern_server: str = ""):
         self.proc = None
         self.joern_server = joern_server or "http://localhost:8080"
-        self.workspace_dir = Path(workspace_dir) if workspace_dir else None
         self.session = requests.Session()
         self.start()
 
@@ -48,7 +46,7 @@ class Connection:
                 time.sleep(1)
 
     def start(self, timeout: int = 60):
-        """Start a new Joern Server process with workspace relocation."""
+        """Start a new Joern Server process."""
         logger.debug("Starting Joern server process...")
         argv = ['joern', '--server']
 

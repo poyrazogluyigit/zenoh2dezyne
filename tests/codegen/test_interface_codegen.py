@@ -19,7 +19,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(2, [OutEvent("basic/B/A")], [ChangeStateTo(1)]),
             ])
         }
-        _res = state_machines_to_code("A", sms)
+        _res = state_machines_to_code("A", sms, declared_topics=["basic/B/A"])
         name, file = _res.name, _res.file
         code = file.to_code()
 
@@ -166,7 +166,7 @@ class TestStateMachinesToCode(unittest.TestCase):
                 State(2, [OutEvent("foo/bar")], [ChangeStateTo(1)]),  # duplicate
             ])
         }
-        _res = state_machines_to_code("A", sms)
+        _res = state_machines_to_code("A", sms, declared_topics=["foo/bar"])
         _, file = _res.name, _res.file
         code = file.to_code()
         self.assertEqual(code.count("out void foo_bar();"), 1)

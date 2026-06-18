@@ -59,7 +59,7 @@ class TestStateMachineGeneration(unittest.TestCase):
             ])
         data = mock_translation_unit
         cfg = data.callback_threads[0].cfg
-        sm = _generate_behavior_for_cfg(data, cfg)
+        sm = _generate_behavior_for_cfg(cfg)
         self.assertTrue(_state_machines_isomorphic(sm, output))
 
     def test_behavior_generation(self):

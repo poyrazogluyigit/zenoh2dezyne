@@ -144,8 +144,10 @@ def state_machines_to_code(
     if "main" in threads:
         threads = ["main"] + [t for t in threads if t != "main"]
 
-    # Remove multiple instances of publishers publishing to the same topic
-    out_topics: list[str] = list(set(declared_topics))
+    # Remove multiple instances of publishers publishing to the same topic.
+    # Mangle here so interface out-events match the mangled names used in the
+    # behavior body, in-events, and Network handlers (slashes/quotes stripped).
+    out_topics: list[str] = sorted({mangle_topic(t) for t in declared_topics})
 
     # Pass 2: render guards and collect the branch-signal names they introduce.
     per_thread_guards: dict[str, list[Guard]] = {}

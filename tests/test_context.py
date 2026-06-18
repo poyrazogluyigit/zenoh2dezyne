@@ -9,12 +9,11 @@ class TestRunContext(unittest.TestCase):
         ctx = RunContext(input_dir=Path("/x/basic-example"), output_dir=Path("/tmp/out"))
         self.assertEqual(ctx.project_name, "basic-example")
         self.assertEqual(ctx.amalgamated_dir, Path("/tmp/out/amalgamated"))
-        self.assertEqual(ctx.workspace_dir, Path("/tmp/out/workspace"))
         self.assertEqual(ctx.models_dir, Path("/tmp/out/models"))
 
     def test_mkdirs_creates_all(self):
         with tempfile.TemporaryDirectory() as d:
             ctx = RunContext(input_dir=Path(d), output_dir=Path(d) / "out")
             ctx.mkdirs()
-            for p in (ctx.amalgamated_dir, ctx.workspace_dir, ctx.models_dir):
+            for p in (ctx.amalgamated_dir, ctx.models_dir):
                 self.assertTrue(p.is_dir())

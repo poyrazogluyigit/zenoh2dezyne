@@ -5,7 +5,7 @@ from pathlib import Path
 from src.main import main as main_cli
 from src.pipeline import Pipeline
 from src.context import RunContext
-from src.preprocess import QuomAmalgamator
+from src.preprocess import Amalgamator
 from src.frontend import JoernClient
 
 
@@ -24,11 +24,11 @@ class TestRealMultiFileE2E(unittest.TestCase):
             ctx = RunContext(input_path, output_dir)
 
             # Run real pipeline with real quom
-            with JoernClient(workspace_dir=ctx.workspace_dir) as client:
+            with JoernClient() as client:
                 Pipeline(
                     ctx,
                     client=client,
-                    amalgamator=QuomAmalgamator(),
+                    amalgamator=Amalgamator(),
                     middleware="zenoh",
                 ).run()
 
