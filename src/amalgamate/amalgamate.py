@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 _INCLUDE = re.compile(r'^\s*#\s*include\s*(?:"([^"]+)"|<([^>]+)>)')
 _MAIN = re.compile(r'\bint\s+main\s*\(')
+# A class/struct declaration or forward declaration (excludes `enum class`):
+#   class Foo;  | struct Bar {  | class Baz final : public Qux
+_CLASS_DECL = re.compile(r'(?<!enum )\b(?:class|struct)\s+(\w+)(?:\s+final)?\s*[:{;]')
 
 
 def detect_nodes(input_dir: Path) -> list[Path]:
@@ -92,6 +95,20 @@ def _resolve(name: str, search_dirs: list[Path]) -> Path | None:
     return None
 
 
+def _declared_classes(text: str) -> set[str]:
+    """Names of classes/structs declared (or forward-declared) in `text`."""
+    return set(_CLASS_DECL.findall(text))
+
+
+def _definer_pattern(classes: set[str]) -> re.Pattern[str] | None:
+    """Regex matching an out-of-line member definition ``Class::`` for any of
+    `classes`, i.e. the translation unit that *defines* that class's members."""
+    if not classes:
+        return None
+    alt = "|".join(re.escape(c) for c in classes)
+    return re.compile(rf'\b(?:{alt})::')
+
+
 class Amalgamator:
     """Inlines a translation unit's dependencies per a chosen mode."""
 
@@ -104,10 +121,34 @@ class Amalgamator:
         on_missing: OnMissing = OnMissing.WARN,
     ) -> None:
         source_dir = search_dirs[0]
-        visited: set[Path] = set()
-        text = self._inline(entry, search_dirs, source_dir, mode, on_missing, visited)
+        visited: set[Path] = {entry.resolve()}
+        parts = [self._inline(entry, search_dirs, source_dir, mode, on_missing, visited)]
+
+        # Linker phase. A .cpp belongs to this executable if it *defines* the
+        # members of a class *declared* by a header we have already inlined --
+        # regardless of the file's name or location. Inlining a definer may pull
+        # in further headers (new declarations), so repeat until nothing is added.
+        candidates = [
+            (cpp, text)
+            for cpp in sorted(source_dir.rglob("*.cpp"))
+            if cpp.resolve() not in visited and not _MAIN.search(text := cpp.read_text())
+        ]
+        while True:
+            pattern = _definer_pattern(_declared_classes("".join(parts)))
+            added = False
+            if pattern is not None:
+                for cpp, text in candidates:
+                    key = cpp.resolve()
+                    if key in visited or not pattern.search(text):
+                        continue
+                    visited.add(key)
+                    parts.append(self._inline(cpp, search_dirs, source_dir, mode, on_missing, visited))
+                    added = True
+            if not added:
+                break
+
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(text)
+        out_path.write_text("".join(parts))
 
     def _inline(
         self,
@@ -159,5 +200,6 @@ class Amalgamator:
     def _handle_missing(self, name: str, includer: Path, on_missing: OnMissing) -> None:
         msg = f'could not resolve #include "{name}" from {includer}'
         if on_missing is OnMissing.FAIL:
+            logger.error(msg)
             raise FileNotFoundError(msg)
         logger.warning(msg)

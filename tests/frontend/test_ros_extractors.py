@@ -80,6 +80,20 @@ class TestRos1Extractor(unittest.TestCase):
         pubs = [Publisher(symbol="chatter_pub", topic="chatter")]
         self.assertEqual(ext.resolve_publish_topic("chatter_pub.publish(msg)", pubs), "chatter")
 
+    def test_publisher_symbol_strips_joern_scope_prefix(self):
+        # Joern reports global-scope handles as "<global> name". The stored symbol
+        # must be the bare identifier so it matches the bare publish receiver
+        # (`name.publish(...)`); otherwise the topic never resolves.
+        client = FakeJoernClient({
+            "advertise": [{"<global> chatter_pub": ['"/chatter"', "1", "true"]}],
+        })
+        pubs = Ros1Extractor().extract_publishers(client, "talker.cpp")
+        self.assertEqual(pubs, [Publisher(symbol="chatter_pub", topic='"/chatter"')])
+        # And it now resolves against a bare receiver:
+        self.assertEqual(
+            Ros1Extractor().resolve_publish_topic("chatter_pub.publish(m)", pubs), '"/chatter"'
+        )
+
     def test_registry(self):
         self.assertIsInstance(get_extractor("ros1"), Ros1Extractor)
 

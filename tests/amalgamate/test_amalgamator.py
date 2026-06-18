@@ -192,14 +192,15 @@ class TestOnMissing(unittest.TestCase):
             src = self._project_with_missing_include(root)
             out = root / "out" / "main.cpp"
 
-            with self.assertRaises(FileNotFoundError):
-                Amalgamator().amalgamate(
-                    entry=src / "main.cpp",
-                    out_path=out,
-                    search_dirs=[src],
-                    mode=AmalgamationMode.SOURCE_PROJECT,
-                    on_missing=OnMissing.FAIL,
-                )
+            with self.assertLogs("src.amalgamate.amalgamate", level="ERROR"):
+                with self.assertRaises(FileNotFoundError):
+                    Amalgamator().amalgamate(
+                        entry=src / "main.cpp",
+                        out_path=out,
+                        search_dirs=[src],
+                        mode=AmalgamationMode.SOURCE_PROJECT,
+                        on_missing=OnMissing.FAIL,
+                    )
 
 
 class TestCommentTracking(unittest.TestCase):
@@ -275,6 +276,126 @@ class TestCommentTracking(unittest.TestCase):
 
             # The "/*" lives in a string, so the real include below must still inline.
             self.assertIn("int REAL()", out.read_text())
+
+
+class TestLinkerResolution(unittest.TestCase):
+    """Amalgamation mimics the linker via class-scope resolution: a .cpp that
+    DEFINES members (``Class::``) of a class DECLARED by an inlined header is
+    pulled in -- wherever it lives and whatever it is named -- repeated
+    transitively until no new translation unit is added."""
+
+    def test_links_definer_in_other_folder_with_unrelated_name(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "src").mkdir()
+            (root / "include").mkdir()
+            (root / "impl").mkdir()
+            (root / "include" / "node.h").write_text(
+                "class Node { public: void wire(); };\n"
+            )
+            # Definer lives in a different folder with an unrelated filename.
+            (root / "impl" / "wiring.cpp").write_text(
+                '#include "node.h"\nvoid Node::wire() { create_publisher(); }\n'
+            )
+            (root / "src" / "main.cpp").write_text(
+                '#include "node.h"\nint main() { return 0; }\n'
+            )
+            out = root / "out" / "main.cpp"
+
+            Amalgamator().amalgamate(
+                entry=root / "src" / "main.cpp",
+                out_path=out,
+                search_dirs=[root, root / "src", root / "include", root / "impl"],
+                mode=AmalgamationMode.SOURCE_ONLY,
+            )
+
+            text = out.read_text()
+            self.assertIn("void Node::wire()", text)   # definer found across folders
+            self.assertIn("create_publisher()", text)  # by symbol, not by filename
+
+    def test_links_definers_transitively(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "src").mkdir()
+            (root / "include").mkdir()
+            (root / "impl").mkdir()
+            (root / "include" / "a.h").write_text("class A { public: void f(); };\n")
+            (root / "include" / "b.h").write_text("class B { public: void g(); };\n")
+            (root / "src" / "main.cpp").write_text(
+                '#include "a.h"\nint main() { return 0; }\n'
+            )
+            # A's definer pulls in b.h -> declares B -> B's definer pulled next round.
+            (root / "impl" / "a_impl.cpp").write_text(
+                '#include "a.h"\n#include "b.h"\nvoid A::f() { B().g(); }\n'
+            )
+            (root / "impl" / "b_impl.cpp").write_text(
+                '#include "b.h"\nvoid B::g() { create_subscription(); }\n'
+            )
+            out = root / "out" / "main.cpp"
+
+            Amalgamator().amalgamate(
+                entry=root / "src" / "main.cpp",
+                out_path=out,
+                search_dirs=[root, root / "src", root / "include", root / "impl"],
+                mode=AmalgamationMode.SOURCE_ONLY,
+            )
+
+            text = out.read_text()
+            self.assertIn("void A::f()", text)
+            self.assertIn("void B::g()", text)            # reached transitively
+            self.assertIn("create_subscription()", text)
+
+    def test_ignores_definer_of_undeclared_class(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "src").mkdir()
+            (root / "include").mkdir()
+            (root / "impl").mkdir()
+            (root / "include" / "node.h").write_text(
+                "class Node { public: void wire(); };\n"
+            )
+            (root / "impl" / "node_impl.cpp").write_text(
+                '#include "node.h"\nvoid Node::wire() {}\n'
+            )
+            (root / "src" / "main.cpp").write_text(
+                '#include "node.h"\nint main() { return 0; }\n'
+            )
+            # Other is never declared by a header inlined into main -> not linked.
+            (root / "impl" / "other.cpp").write_text(
+                "class Other { void stuff(); };\n"
+                "void Other::stuff() { SHOULD_NOT_APPEAR(); }\n"
+            )
+            out = root / "out" / "main.cpp"
+
+            Amalgamator().amalgamate(
+                entry=root / "src" / "main.cpp",
+                out_path=out,
+                search_dirs=[root, root / "src", root / "include", root / "impl"],
+                mode=AmalgamationMode.SOURCE_ONLY,
+            )
+
+            text = out.read_text()
+            self.assertIn("void Node::wire()", text)
+            self.assertNotIn("SHOULD_NOT_APPEAR", text)
+
+    def test_does_not_merge_other_entry_points(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "src"
+            src.mkdir()
+            (src / "main.cpp").write_text("int main() { return 0; }\n")
+            # A second executable's entry point must not be linked in.
+            (src / "other_main.cpp").write_text("int main() { return 42; }\n")
+            out = root / "out" / "main.cpp"
+
+            Amalgamator().amalgamate(
+                entry=src / "main.cpp",
+                out_path=out,
+                search_dirs=[root, src],
+                mode=AmalgamationMode.SOURCE_ONLY,
+            )
+
+            self.assertNotIn("return 42", out.read_text())
 
 
 class TestSourceOnly(unittest.TestCase):

@@ -47,7 +47,11 @@ def extract_handle_publishers(client, file: str, call_name: str) -> list[Publish
         for handle, literals in item.items():
             topic = _first_quoted(literals)
             if topic is not None:
-                publishers.append(Publisher(symbol=handle, topic=topic))
+                # Joern prefixes global-scope targets with a scope tag, e.g.
+                # "<global> chatter_pub". The publish receiver is the bare name,
+                # so strip the tag to keep the symbols comparable.
+                symbol = re.sub(r"^<[^>]*>\s*", "", handle).strip()
+                publishers.append(Publisher(symbol=symbol, topic=topic))
     return publishers
 
 

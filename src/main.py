@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .context import RunContext
 from .pipeline import Pipeline
-from .amalgamate import Amalgamator
+from .amalgamate import Amalgamator, AmalgamationMode, OnMissing
 from .frontend import JoernClient
 
 
@@ -39,6 +39,36 @@ def build_parser() -> argparse.ArgumentParser:
         default="zenoh",
         help="Pub/sub middleware of the analyzed project (default: zenoh)",
     )
+    parser.add_argument(
+        "--amalgamation", "-a",
+        choices=["source-only", "source+project", "source+all"],
+        default="source-only",
+        help=(
+            "How much to inline when amalgamating each entry point "
+            "(default: source-only). "
+            "'source-only': inline only headers located inside the source "
+            "directory; leave all other includes untouched. "
+            "'source+project': also inline non-system headers (\"...\" "
+            "includes) resolvable in the search paths; leave <system> "
+            "includes alone. "
+            "'source+all': inline every resolvable include, including "
+            "<angle> headers found in the search paths; unresolvable "
+            "system headers are left as-is."
+        ),
+    )
+    parser.add_argument(
+        "--on-missing",
+        choices=["warn", "fail"],
+        default="warn",
+        help=(
+            "What to do when a non-system (\"...\") include cannot be "
+            "resolved in the search paths (default: warn). "
+            "'warn': log a warning and leave the #include line in place. "
+            "'fail': log an error and abort. "
+            "Unresolvable <system> includes are always left as-is and never "
+            "trigger this."
+        ),
+    )
     return parser
 
 
@@ -66,6 +96,8 @@ def main():
             client=client,
             amalgamator=Amalgamator(),
             middleware=args.middleware,
+            mode=AmalgamationMode(args.amalgamation),
+            on_missing=OnMissing(args.on_missing),
         ).run()
 
     logging.info("Code generation complete")

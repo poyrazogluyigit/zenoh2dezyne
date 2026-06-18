@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .context import RunContext
-from .amalgamate import detect_nodes, Amalgamator, AmalgamationMode
+from .amalgamate import detect_nodes, Amalgamator, AmalgamationMode, OnMissing
 from .frontend import JoernClient
 from .builders import Builder, InterconnectionGraph
 from .codegen import CodeGenerator
@@ -21,6 +21,7 @@ class Pipeline:
         client: JoernClient for code analysis.
         amalgamator: Amalgamator for merging source files.
         middleware: Middleware name for extraction ("zenoh", "ros1", "ros2", ...).
+        mode: Amalgamation mode controlling how much to inline.
         nodes: List of detected .cpp files defining main().
         graph: InterconnectionGraph built from code analysis.
         codegen: CodeGenerator instance for Dezyne output.
@@ -29,6 +30,8 @@ class Pipeline:
     client: JoernClient
     amalgamator: Amalgamator
     middleware: str = "zenoh"
+    mode: AmalgamationMode = AmalgamationMode.SOURCE_ONLY
+    on_missing: OnMissing = OnMissing.WARN
     nodes: list[Path] = field(default_factory=list)
     graph: InterconnectionGraph | None = None
     codegen: CodeGenerator | None = None
@@ -54,7 +57,8 @@ def _amalgamate(p: Pipeline) -> None:
             node,
             p.ctx.amalgamated_dir / node.name,
             dirs,
-            AmalgamationMode.SOURCE_PROJECT,
+            p.mode,
+            on_missing=p.on_missing,
         )
 
 
