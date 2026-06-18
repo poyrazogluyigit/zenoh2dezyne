@@ -38,7 +38,9 @@ class FakeAmalgamator:
         """Initialize with empty call log."""
         self.calls = []
 
-    def amalgamate(self, entry: Path, out_path: Path, search_dirs: list) -> None:
+    def amalgamate(
+        self, entry: Path, out_path: Path, search_dirs: list, mode=None, on_missing=None
+    ) -> None:
         """Concatenate entry + no-main lib sources into out_path; record the call.
 
         Simulates quom's behavior of:

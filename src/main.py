@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .context import RunContext
 from .pipeline import Pipeline
-from .preprocess import Amalgamator
+from .amalgamate import Amalgamator
 from .frontend import JoernClient
 
 

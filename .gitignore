@@ -12,3 +12,5 @@ generate/
 .github
 workspace/
 out/
+MARA/
+autonomous-drone/

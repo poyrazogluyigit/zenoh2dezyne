@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .context import RunContext
-from .preprocess import detect_nodes, Amalgamator
+from .amalgamate import detect_nodes, Amalgamator, AmalgamationMode
 from .frontend import JoernClient
 from .builders import Builder, InterconnectionGraph
 from .codegen import CodeGenerator
@@ -50,7 +50,12 @@ def _amalgamate(p: Pipeline) -> None:
     """Stage 2: Amalgamate each node's dependencies into a single file."""
     dirs = [p.ctx.input_dir, *(d for d in p.ctx.input_dir.rglob("*") if d.is_dir())]
     for node in p.nodes:
-        p.amalgamator.amalgamate(node, p.ctx.amalgamated_dir / node.name, dirs)
+        p.amalgamator.amalgamate(
+            node,
+            p.ctx.amalgamated_dir / node.name,
+            dirs,
+            AmalgamationMode.SOURCE_PROJECT,
+        )
 
 
 def _import(p: Pipeline) -> None:

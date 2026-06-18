@@ -26,4 +26,3 @@ class StateMachine:
     @property
     def num_states(self):
         return len(self.states)
-    
