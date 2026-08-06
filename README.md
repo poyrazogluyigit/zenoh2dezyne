@@ -38,7 +38,7 @@ The run is a fixed sequence of stages (`src/pipeline.py`, `STAGES`):
 ```
   Source tree (.cpp / .h, multi-file)
         │
-        ▼  src/preprocess
+        ▼  src/amalgamate
   ┌──────────────────────┐   detect_nodes: files defining int main()
   │ detect → amalgamate  │   Amalgamator (quom): inline each node's deps into
   │ (quom)               │   one self-contained <node>.cpp  →  <out>/amalgamated/
@@ -240,9 +240,8 @@ src/
 ├── main.py                   CLI entry point (--input / --middleware)
 ├── context.py                RunContext: input/output paths (amalgamated, models)
 ├── pipeline.py               Pipeline + STAGES (detect→amalgamate→import→build→codegen→write)
-├── preprocess/               Entry-point detection + quom amalgamation
-│   ├── _detect.py            detect_nodes (files defining int main())
-│   └── _amalgamate.py        Amalgamator (shells out to quom)
+├── amalgamate/                Entry-point detection + quom amalgamation
+│   └── amalgamate.py         detect_nodes (files defining int main()) + Amalgamator (shells out to quom)
 ├── frontend/                 Joern access
 │   ├── client.py             JoernClient — generic queries (files, CFGs, import/open/delete)
 │   ├── _connection.py        HTTP transport (can spawn local Joern)
@@ -274,7 +273,7 @@ tests/
 ├── codegen/                  state-machine, interface, structural, end-to-end
 ├── builders/                 builder + normalize
 ├── frontend/                 zenoh/ros extractors, connection/workspace
-├── preprocess/               detect, amalgamate
+├── amalgamate/                detect, amalgamate
 ├── graphutils/               CFG / DOT / HTML parsing tests
 ├── datatypes/                neutral comm-model types
 └── test_*.py                 context, pipeline, interconnection, CLI, gated real e2e
@@ -314,7 +313,8 @@ python -m unittest \
     tests.test_context \
     tests.test_pipeline \
     tests.test_main_cli \
-    tests.preprocess.test_detect
+    tests.amalgamate.test_amalgamator \
+    tests.fixtures.test_fixtures
 ```
 
 Or run a single module directly, e.g.
